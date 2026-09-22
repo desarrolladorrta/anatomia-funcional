@@ -1,16 +1,16 @@
 export const classificationItems = [
-  [1, "F\u00e9mur", "appendicular"],
-  [2, "Estern\u00f3n", "axial"],
-  [3, "Esc\u00e1pula", "appendicular"],
-  [4, "V\u00e9rtebra lumbar", "axial"],
-  [5, "H\u00famero", "appendicular"],
-  [6, "Costilla", "axial"],
-  [7, "Mand\u00edbula", "axial"],
-  [8, "Tibia", "appendicular"],
-  [9, "Clav\u00edcula", "appendicular"],
-  [10, "Sacro", "axial"],
-  [11, "Radio", "appendicular"],
-  [12, "Occipital", "axial"],
+  [1, "F\u00e9mur", "appendicular", "femur", "Es el hueso del muslo: conecta la cadera con la rodilla y transmite grandes cargas."],
+  [2, "Estern\u00f3n", "axial", "esternon", "Ocupa la l\u00ednea media anterior del t\u00f3rax y se articula con las costillas mediante cart\u00edlagos."],
+  [3, "Esc\u00e1pula", "appendicular", "escapula", "Es un hueso plano y triangular de la cintura escapular que orienta los movimientos del hombro."],
+  [4, "V\u00e9rtebra lumbar", "axial", "vertebra-lumbar", "Forma parte de la columna vertebral y soporta buena parte del peso del tronco."],
+  [5, "H\u00famero", "appendicular", "humero", "Es el hueso del brazo y une funcionalmente el hombro con el codo."],
+  [6, "Costilla", "axial", "costilla", "Integra la caja tor\u00e1cica, protege los \u00f3rganos del t\u00f3rax y se relaciona con la columna."],
+  [7, "Mand\u00edbula", "axial", "mandibula", "Es el hueso m\u00f3vil de la cara que forma la parte inferior de la cavidad oral."],
+  [8, "Tibia", "appendicular", "tibia", "Es el principal hueso de carga de la pierna entre la rodilla y el tobillo."],
+  [9, "Clav\u00edcula", "appendicular", "clavicula", "Es el puntal curvo de la cintura escapular que conecta el miembro superior con el t\u00f3rax."],
+  [10, "Sacro", "axial", "sacro", "Resulta de la fusi\u00f3n de cinco v\u00e9rtebras y transmite el peso de la columna hacia la pelvis."],
+  [11, "Radio", "appendicular", "radio", "Se ubica en el lado lateral del antebrazo, alineado con el pulgar, y participa en pronaci\u00f3n y supinaci\u00f3n."],
+  [12, "Occipital", "axial", "occipital", "Forma la regi\u00f3n posterior e inferior del cr\u00e1neo y rodea el foramen magno."],
 ];
 
 export const regionSets = [
@@ -37,6 +37,7 @@ export const movementCases = [
   {
     id: "lanzamiento",
     title: "Lanzamiento por encima de la cabeza",
+    image: "lanzamiento-sobre-cabeza",
     prompt: "Selecciona estructuras clave del miembro superior y la cintura escapular.",
     options: ["H\u00famero", "Radio", "Ulna", "Esc\u00e1pula", "Clav\u00edcula", "Tibia", "Estern\u00f3n"],
     answers: ["H\u00famero", "Radio", "Ulna", "Esc\u00e1pula", "Clav\u00edcula"],
@@ -45,6 +46,7 @@ export const movementCases = [
   {
     id: "salto",
     title: "Salto y aterrizaje",
+    image: "salto-aterrizaje",
     prompt: "Selecciona huesos que reciben, transmiten o estabilizan la carga del miembro inferior.",
     options: ["F\u00e9mur", "Patela", "Tibia", "F\u00edbula", "Radio", "Clav\u00edcula", "Occipital"],
     answers: ["F\u00e9mur", "Patela", "Tibia", "F\u00edbula"],
@@ -52,8 +54,9 @@ export const movementCases = [
   },
   {
     id: "proteccion",
-    title: "Golpe en el torax",
-    prompt: "Selecciona las estructuras oseas que protegen los organos toracicos.",
+    title: "Golpe en el t\u00f3rax",
+    image: "proteccion-torax",
+    prompt: "Selecciona las estructuras \u00f3seas que protegen los \u00f3rganos tor\u00e1cicos.",
     options: ["Estern\u00f3n", "Costillas", "Carpos", "F\u00edbula", "Esc\u00e1pula"],
     answers: ["Estern\u00f3n", "Costillas"],
     minimum: 2,
@@ -61,12 +64,32 @@ export const movementCases = [
   {
     id: "postura",
     title: "Postura del tronco",
+    image: "postura-tronco",
     prompt: "Selecciona estructuras del eje corporal relevantes para sostener y alinear el tronco.",
     options: ["V\u00e9rtebras", "Sacro", "Costillas", "Metacarpos", "F\u00e9mur", "Radio"],
     answers: ["V\u00e9rtebras", "Sacro", "Costillas"],
     minimum: 2,
   },
 ];
+
+export const movementBoneImages = {
+  "H\u00famero": "humero",
+  Radio: "radio",
+  Ulna: "ulna",
+  "Esc\u00e1pula": "escapula",
+  "Clav\u00edcula": "clavicula",
+  Tibia: "tibia",
+  "Estern\u00f3n": "esternon",
+  "F\u00e9mur": "femur",
+  Patela: "patela",
+  "F\u00edbula": "fibula",
+  Occipital: "occipital",
+  Costillas: "costilla",
+  Carpos: "carpos",
+  "V\u00e9rtebras": "vertebra-lumbar",
+  Sacro: "sacro",
+  Metacarpos: "metacarpos",
+};
 
 export const mysteries = [
   {
