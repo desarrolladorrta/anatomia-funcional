@@ -373,8 +373,8 @@ function renderFinalCase() {
       <label data-row="appendicular"><span>2</span><b>Tres huesos apendiculares del miembro inferior</b><input name="appendicular" required placeholder="Separados por coma" /></label>
       <label data-row="connector"><span>3</span><b>Estructura que une el miembro inferior al esqueleto axial</b><input name="connector" required /></label>
       <label data-row="load"><span>4</span><b>Hueso que recibe directamente la carga entre f&eacute;mur y tobillo</b><input name="load" required /></label>
-      <label class="long-answer" data-row="reason"><span>5</span><b>&iquest;Por qu&eacute; clasificar los huesos ayuda a analizar el movimiento?</b><textarea name="reason" rows="3" minlength="45" required></textarea></label>
-      <label class="long-answer exit-phrase" data-row="phrase"><span>6</span><b>Construye la frase de salida</b><small>Incluye: axial, apendicular, movimiento y protecci&oacute;n.</small><textarea name="phrase" rows="2" required></textarea></label>
+      <label class="long-answer" data-row="reason"><span>5</span><b>&iquest;Por qu&eacute; clasificar los huesos ayuda a analizar el movimiento?<button type="button" class="field-tip" aria-label="Ayuda" data-tooltip="Respuesta libre: explica con tus propias palabras (m&iacute;nimo 45 caracteres).">i</button></b><textarea name="reason" rows="3" minlength="45" required></textarea></label>
+      <label class="long-answer exit-phrase" data-row="phrase"><span>6</span><b>Construye la frase de salida<button type="button" class="field-tip" aria-label="Ayuda" data-tooltip="Respuesta libre, red&aacute;ctala a tu manera. Debe incluir las palabras: axial, apendicular, movimiento y protecci&oacute;n.">i</button></b><textarea name="phrase" rows="2" required></textarea></label>
     </div>
     <div class="hint-panel" hidden>La cintura p&eacute;lvica transfiere cargas del eje a los miembros inferiores. En la pierna, la tibia es el principal hueso de carga.</div>
     ${challengeActions(4)}
