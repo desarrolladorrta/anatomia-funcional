@@ -2,6 +2,7 @@ import "./styles.css";
 import {
   challengeMeta,
   classificationItems,
+  movementBoneImages,
   movementCases,
   mysteries,
   regions,
@@ -205,7 +206,7 @@ function renderMission() {
   document.querySelectorAll("[data-challenge]").forEach((button) => {
     button.addEventListener("click", () => openChallenge(Number(button.dataset.challenge)));
   });
-  document.querySelector("#reset-button").addEventListener("click", confirmReset);
+  document.querySelector("#reset-button").addEventListener("click", openResetDialog);
   document.querySelector("#exit-control")?.addEventListener("click", () => {
     state.finishedAt = new Date().toISOString();
     persist();
@@ -239,21 +240,74 @@ function updateTimer() {
   timer.closest("div").classList.toggle("is-alert", remaining <= 300);
 }
 
-function confirmReset() {
-  if (!window.confirm("Se borrar\u00e1 el progreso de esta misi\u00f3n. \u00bfDeseas continuar?")) return;
-  localStorage.removeItem(STORAGE_KEY);
-  state = emptyState();
+function openResetDialog() {
+  document.querySelector("#reset-dialog")?.remove();
+  const dialog = document.createElement("dialog");
+  dialog.id = "reset-dialog";
+  dialog.className = "reset-dialog";
+  dialog.setAttribute("aria-labelledby", "reset-title");
+  dialog.setAttribute("aria-describedby", "reset-description");
+  dialog.innerHTML = `
+    <div class="reset-dialog__marker">${icon("reset")}<span>NUEVA SESI&Oacute;N</span></div>
+    <div class="reset-dialog__content">
+      <button class="icon-button reset-dialog__close" type="button" data-reset-cancel aria-label="Cerrar sin reiniciar">${icon("close")}</button>
+      <p>CONTROL DE MISI&Oacute;N</p>
+      <h2 id="reset-title">&iquest;Qu&eacute; quieres reiniciar?</h2>
+      <p id="reset-description">Se eliminar&aacute;n el progreso, las respuestas, el puntaje y el tiempo de esta misi&oacute;n. Los resultados que ya se enviaron al docente no se borrar&aacute;n.</p>
+      <div class="reset-options">
+        <button class="reset-option reset-option--primary" type="button" data-reset-progress>
+          <span>${icon("reset")}</span>
+          <strong>Reiniciar los retos</strong>
+          <small>Conserva a ${escapeHtml(state.profile?.name || "este estudiante")} y comienza desde la estaci&oacute;n 1.</small>
+        </button>
+        <button class="reset-option" type="button" data-reset-all>
+          <span>${icon("close")}</span>
+          <strong>Cambiar de estudiante</strong>
+          <small>Borra la identificaci&oacute;n actual y vuelve a la pantalla de acceso.</small>
+        </button>
+      </div>
+      <button class="text-button reset-cancel" type="button" data-reset-cancel>Continuar la misi&oacute;n actual</button>
+    </div>`;
+  document.body.append(dialog);
+
+  const close = () => {
+    dialog.close();
+    dialog.remove();
+  };
+  dialog.querySelectorAll("[data-reset-cancel]").forEach((button) => button.addEventListener("click", close));
+  dialog.querySelector("[data-reset-progress]").addEventListener("click", () => resetMission(true));
+  dialog.querySelector("[data-reset-all]").addEventListener("click", () => resetMission(false));
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    close();
+  });
+  dialog.showModal();
+  dialog.querySelector("[data-reset-cancel]").focus();
+}
+
+function resetMission(keepProfile) {
+  const profile = keepProfile ? state.profile : null;
+  state = {
+    ...emptyState(),
+    profile,
+    sessionId: profile ? crypto.randomUUID() : null,
+    startedAt: profile ? new Date().toISOString() : null,
+  };
+  persist();
+  document.querySelector("#reset-dialog")?.remove();
   render();
 }
 
 function openChallenge(index) {
   if (index > state.current) return;
   const dialog = document.querySelector("#challenge-dialog");
+  const isWizard = index >= 0 && index <= 4;
+  dialog.classList.toggle("challenge-dialog--wizard", isWizard);
   dialog.innerHTML = `
     <div class="dialog-rail">
       <span>ESTACI&Oacute;N</span><strong>${String(index + 1).padStart(2, "0")}</strong><i></i><small>${challengeMeta[index].specimen}</small>
     </div>
-    <div class="dialog-body">
+    <div class="dialog-body ${isWizard ? "dialog-body--wizard" : ""}">
       <header class="dialog-header">
         <div><p>${challengeMeta[index].title}</p><h2 id="dialog-title">${challengeMeta[index].short}</h2></div>
         <button class="icon-button" data-close type="button" aria-label="Cerrar reto">${icon("close")}</button>
@@ -264,12 +318,18 @@ function openChallenge(index) {
   const form = dialog.querySelector("form");
   if (form) {
     restoreDraft(index, form);
+    if (index === 0) initializeClassificationWizard(form);
+    if (index === 1) initializeRegionWizard(form);
+    if (index === 2) initializeMovementWizard(form);
+    if (index === 3) initializeMysteryWizard(form);
+    if (index === 4) initializeFinalWizard(form);
     form.addEventListener("submit", (event) => validateChallenge(event, index));
     form.addEventListener("input", () => saveDraft(index, form));
     form.addEventListener("change", () => saveDraft(index, form));
     dialog.querySelector("[data-hint]")?.addEventListener("click", () => revealHint(index));
   }
   dialog.showModal();
+  if (isWizard) dialog.querySelector('[data-wizard-slide]:not([hidden]) h3, [data-wizard-slide]:not([hidden]) textarea')?.focus();
 }
 
 function renderCompletedChallenge(index) {
@@ -322,63 +382,529 @@ function renderChallenge(index) {
 }
 
 function renderClassification() {
-  return `<form novalidate>
-    <div class="challenge-instruction"><strong>Clasifica cada muestra.</strong><p>Marca A para axial o P para apendicular. Luego justifica el criterio que utilizaste.</p></div>
-    <div class="classification-grid">
-      ${classificationItems.map(([number, bone]) => `<div class="specimen-row" data-row="${number}" role="group" aria-labelledby="bone-label-${number}"><span class="bone-label" id="bone-label-${number}"><i>${number}</i><b>${bone}</b></span><div class="system-options"><label><input type="radio" name="bone-${number}" value="axial" /> A</label><label><input type="radio" name="bone-${number}" value="appendicular" /> P</label></div></div>`).join("")}
+  return `<form class="classification-wizard" data-classification-wizard novalidate>
+    <input type="hidden" name="wizard-step" value="0" />
+    <div class="wizard-progress" aria-live="polite">
+      <div><span data-wizard-label>Muestra 1 de 12</span><strong data-wizard-count>1/12</strong></div>
+      <div class="wizard-progress__track" role="progressbar" aria-label="Progreso de clasificaci&oacute;n" aria-valuemin="1" aria-valuemax="12" aria-valuenow="1" data-wizard-progressbar><i data-wizard-progress></i></div>
     </div>
-    <label class="long-answer">Justificaci&oacute;n anat&oacute;mica<textarea name="reason" rows="3" minlength="30" required placeholder="Explica c&oacute;mo diferenciaste ambos sistemas..."></textarea></label>
+    <div class="wizard-slides">
+      ${classificationItems.map(([number, bone, , slug], index) => `<section class="wizard-slide" data-wizard-slide="${index}" data-row="${number}" aria-labelledby="bone-question-${number}" ${index === 0 ? "" : "hidden"}>
+        <figure class="specimen-visual">
+          <img ${index === 0 ? `src="${asset(`bones/${slug}.webp`)}"` : ""} data-src="${asset(`bones/${slug}.webp`)}" width="640" height="640" alt="Vista anat&oacute;mica del hueso ${bone}" />
+          <figcaption><span>MUESTRA ${String(number).padStart(2, "0")}</span><small>Vista anat&oacute;mica de referencia</small></figcaption>
+        </figure>
+        <div class="wizard-question">
+          <p>CLASIFICACI&Oacute;N DEL SISTEMA</p>
+          <h3 id="bone-question-${number}" tabindex="-1">&iquest;El ${bone.toLowerCase()} pertenece al esqueleto axial o apendicular?</h3>
+          <p class="wizard-question__help">Observa su forma y recuerda en qu&eacute; regi&oacute;n del cuerpo se encuentra.</p>
+          <div class="wizard-choices" role="radiogroup" aria-labelledby="bone-question-${number}">
+            <label><input type="radio" name="bone-${number}" value="axial" /><span><b>Axial</b><small>Eje central, cr&aacute;neo, columna o caja tor&aacute;cica</small></span></label>
+            <label><input type="radio" name="bone-${number}" value="appendicular" /><span><b>Apendicular</b><small>Cinturas o extremidades superiores e inferiores</small></span></label>
+          </div>
+          <div class="wizard-answer-status" role="status">Selecciona una opci&oacute;n para continuar.</div>
+        </div>
+      </section>`).join("")}
+      <section class="wizard-slide wizard-slide--final" data-wizard-slide="12" hidden>
+        <div class="wizard-final">
+          <span>CIERRE DEL PROTOCOLO</span>
+          <h3 tabindex="-1">Explica tu criterio anat&oacute;mico.</h3>
+          <p>Ya clasificaste las doce muestras. Resume c&oacute;mo distingues el eje central de las cinturas y extremidades.</p>
+          <label class="long-answer">Justificaci&oacute;n anat&oacute;mica<textarea name="reason" rows="4" minlength="30" required placeholder="El esqueleto axial... mientras que el apendicular..."></textarea></label>
+          <div class="wizard-summary"><strong data-wizard-answered>0</strong><span>de 12 muestras respondidas</span></div>
+        </div>
+      </section>
+    </div>
     <div class="hint-panel" hidden>Piensa en el eje central: cr&aacute;neo, columna y caja tor&aacute;cica. Las cinturas y extremidades se proyectan desde ese eje.</div>
-    ${challengeActions(0)}
+    <div class="wizard-controls">
+      <button class="secondary-action" data-wizard-back type="button">Anterior</button>
+      <button class="hint-button" data-hint type="button" ${state.hintUsed.includes(0) ? "disabled" : ""}>${icon("hint")}${state.hintUsed.includes(0) ? "Pista utilizada" : "Solicitar pista (-20)"}</button>
+      <button class="primary-action" data-wizard-next type="button">Siguiente muestra ${icon("arrow")}</button>
+    </div>
+    <div class="form-feedback" role="alert" aria-live="assertive"></div>
   </form>`;
+}
+
+function initializeClassificationWizard(form) {
+  const lastQuestion = classificationItems.length - 1;
+  const finalStep = classificationItems.length;
+  const nextButton = form.querySelector("[data-wizard-next]");
+  const backButton = form.querySelector("[data-wizard-back]");
+
+  const showStep = (requestedStep) => {
+    const step = Math.max(0, Math.min(finalStep, requestedStep));
+    form.elements["wizard-step"].value = String(step);
+    form.querySelectorAll("[data-wizard-slide]").forEach((slide) => {
+      slide.hidden = Number(slide.dataset.wizardSlide) !== step;
+    });
+    const activeSlide = form.querySelector(`[data-wizard-slide="${step}"]`);
+    const image = activeSlide.querySelector("img[data-src]");
+    if (image && !image.src) image.src = image.dataset.src;
+    const nextImage = form.querySelector(`[data-wizard-slide="${Math.min(lastQuestion, step + 1)}"] img[data-src]`);
+    if (nextImage && !nextImage.src) nextImage.src = nextImage.dataset.src;
+
+    const isFinal = step === finalStep;
+    const selected = isFinal ? null : new FormData(form).get(`bone-${step + 1}`);
+    form.querySelector("[data-wizard-label]").textContent = isFinal ? "Justificaci\u00f3n final" : `Muestra ${step + 1} de 12`;
+    form.querySelector("[data-wizard-count]").textContent = isFinal ? "12/12" : `${step + 1}/12`;
+    form.querySelector("[data-wizard-progress]").style.transform = `scaleX(${isFinal ? 1 : (step + 1) / 12})`;
+    form.querySelector("[data-wizard-progressbar]").setAttribute("aria-valuenow", String(isFinal ? 12 : step + 1));
+    backButton.disabled = step === 0;
+    nextButton.type = isFinal ? "submit" : "button";
+    nextButton.innerHTML = isFinal ? `Verificar reto ${icon("check")}` : `Siguiente muestra ${icon("arrow")}`;
+    nextButton.disabled = !isFinal && !selected;
+    if (!isFinal) activeSlide.querySelector(".wizard-answer-status").textContent = selected ? `${selected === "axial" ? "Axial" : "Apendicular"} seleccionado. Puedes continuar.` : "Selecciona una opci\u00f3n para continuar.";
+    form.querySelector("[data-wizard-answered]").textContent = classificationItems.filter(([number]) => new FormData(form).get(`bone-${number}`)).length;
+    saveDraft(0, form);
+    activeSlide.scrollTop = 0;
+    activeSlide.querySelector(".wizard-question")?.scrollTo(0, 0);
+    activeSlide.querySelector("h3, textarea")?.focus({ preventScroll: true });
+  };
+
+  form.showClassificationStep = showStep;
+  form.querySelectorAll('.wizard-choices input[type="radio"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      const slide = radio.closest(".wizard-slide");
+      markInvalid(slide, false);
+      slide.querySelector(".wizard-answer-status").textContent = `${radio.value === "axial" ? "Axial" : "Apendicular"} seleccionado. Puedes continuar.`;
+      nextButton.disabled = false;
+    });
+  });
+  backButton.addEventListener("click", () => showStep(Number(form.elements["wizard-step"].value) - 1));
+  nextButton.addEventListener("click", () => {
+    if (nextButton.type === "submit") return;
+    const step = Number(form.elements["wizard-step"].value);
+    if (!new FormData(form).get(`bone-${step + 1}`)) return;
+    showStep(step + 1);
+  });
+  showStep(Number(form.elements["wizard-step"].value) || 0);
 }
 
 function renderRegions() {
-  const options = `<option value="">Selecciona</option>${regionSets.map(([code, bones]) => `<option value="${code}">${code} - ${bones}</option>`).join("")}`;
-  return `<form novalidate>
-    <div class="challenge-instruction"><strong>Reconstruye el mapa corporal.</strong><p>Asigna a cada regi&oacute;n el conjunto de huesos correspondiente. Cada letra se usa una vez.</p></div>
-    <div class="region-map">${regions.map(([region], index) => `<label data-row="${index}"><span><b>${index + 1}</b>${region}</span><select name="region-${index}" required>${options}</select></label>`).join("")}</div>
+  return `<form class="region-wizard" data-region-wizard novalidate>
+    <input type="hidden" name="region-step" value="0" />
+    <div class="wizard-progress" aria-live="polite">
+      <div><span data-region-label>Regi&oacute;n 1 de 7</span><strong data-region-count>1/7</strong></div>
+      <div class="wizard-progress__track" role="progressbar" aria-label="Progreso de cartograf&iacute;a corporal" aria-valuemin="1" aria-valuemax="7" aria-valuenow="1" data-region-progressbar><i data-region-progress></i></div>
+    </div>
+    <div class="wizard-slides">
+      ${regions.map(([region], index) => `<section class="wizard-slide region-slide" data-wizard-slide="${index}" data-row="${index}" aria-labelledby="region-question-${index}" ${index === 0 ? "" : "hidden"}>
+        <div class="region-evidence">
+          <div class="region-evidence__index"><span>REGI&Oacute;N CORPORAL</span><strong>${String(index + 1).padStart(2, "0")}</strong></div>
+          <h2 class="region-evidence__name">${region}</h2>
+          <p class="region-evidence__hint">Identifica el conjunto &oacute;seo que pertenece a esta regi&oacute;n del cuerpo.</p>
+        </div>
+        <div class="region-question">
+          <p>CARTOGRAF&Iacute;A CORPORAL</p>
+          <h3 id="region-question-${index}" tabindex="-1">&iquest;Qu&eacute; conjunto &oacute;seo forma esta regi&oacute;n?</h3>
+          <p class="region-question__help">Cada conjunto se usa una sola vez en toda la estaci&oacute;n.</p>
+          <div class="region-options" role="radiogroup" aria-labelledby="region-question-${index}">
+            ${regionSets.map(([code, bones]) => `<label><input type="radio" name="region-${index}" value="${code}" /><span><b>${code}</b><small>${bones}</small></span></label>`).join("")}
+          </div>
+          <div class="region-answer-status" role="status">Selecciona un conjunto para continuar.</div>
+        </div>
+      </section>`).join("")}
+      <section class="wizard-slide wizard-slide--final" data-wizard-slide="7" hidden>
+        <div class="wizard-final region-review">
+          <span>REVISI&Oacute;N DEL MAPA</span>
+          <h3 tabindex="-1">Confirma tus siete regiones.</h3>
+          <p>Comprueba que cada regi&oacute;n tenga un conjunto &oacute;seo distinto antes de verificar.</p>
+          <div class="region-review__list">
+            ${regions.map(([region], index) => `<div><span>${String(index + 1).padStart(2, "0")}</span><b>${region}</b><small data-review-region="${index}">Sin asignar</small></div>`).join("")}
+          </div>
+          <div class="wizard-summary"><strong data-region-answered>0</strong><span>de 7 regiones asignadas</span></div>
+        </div>
+      </section>
+    </div>
     <div class="hint-panel" hidden>Empieza por los conjuntos inequ&iacute;vocos: estern&oacute;n y costillas forman el t&oacute;rax; v&eacute;rtebras, sacro y c&oacute;ccix forman la columna.</div>
-    ${challengeActions(1)}
+    <div class="wizard-controls">
+      <button class="secondary-action" data-region-back type="button">Anterior</button>
+      <button class="hint-button" data-hint type="button" ${state.hintUsed.includes(1) ? "disabled" : ""}>${icon("hint")}${state.hintUsed.includes(1) ? "Pista utilizada" : "Solicitar pista (-20)"}</button>
+      <button class="primary-action" data-region-next type="button">Siguiente regi&oacute;n ${icon("arrow")}</button>
+    </div>
+    <div class="form-feedback" role="alert" aria-live="assertive"></div>
   </form>`;
+}
+
+function initializeRegionWizard(form) {
+  const finalStep = regions.length;
+  const setLabel = Object.fromEntries(regionSets);
+  const nextButton = form.querySelector("[data-region-next]");
+  const backButton = form.querySelector("[data-region-back]");
+  const isComplete = (step) => Boolean(new FormData(form).get(`region-${step}`));
+
+  const showStep = (requestedStep) => {
+    const step = Math.max(0, Math.min(finalStep, requestedStep));
+    form.elements["region-step"].value = String(step);
+    form.querySelectorAll("[data-wizard-slide]").forEach((slide) => {
+      slide.hidden = Number(slide.dataset.wizardSlide) !== step;
+    });
+    const activeSlide = form.querySelector(`[data-wizard-slide="${step}"]`);
+    const isFinal = step === finalStep;
+    form.querySelector("[data-region-label]").textContent = isFinal ? "Revisi\u00f3n final" : `Regi\u00f3n ${step + 1} de 7`;
+    form.querySelector("[data-region-count]").textContent = isFinal ? "7/7" : `${step + 1}/7`;
+    form.querySelector("[data-region-progress]").style.transform = `scaleX(${isFinal ? 1 : (step + 1) / 7})`;
+    form.querySelector("[data-region-progressbar]").setAttribute("aria-valuenow", String(isFinal ? 7 : step + 1));
+    backButton.disabled = step === 0;
+    nextButton.type = isFinal ? "submit" : "button";
+    nextButton.innerHTML = isFinal ? `Verificar reto ${icon("check")}` : `Siguiente regi\u00f3n ${icon("arrow")}`;
+    nextButton.disabled = !isFinal && !isComplete(step);
+
+    if (!isFinal) {
+      activeSlide.querySelector(".region-answer-status").textContent = isComplete(step) ? "Conjunto seleccionado. Puedes continuar." : "Selecciona un conjunto para continuar.";
+    }
+    regions.forEach((_, index) => {
+      const value = new FormData(form).get(`region-${index}`);
+      form.querySelector(`[data-review-region="${index}"]`).textContent = value ? `${value} \u00b7 ${setLabel[value]}` : "Sin asignar";
+    });
+    form.querySelector("[data-region-answered]").textContent = regions.filter((_, index) => isComplete(index)).length;
+    saveDraft(1, form);
+    activeSlide.scrollTop = 0;
+    activeSlide.querySelector(".region-question")?.scrollTo(0, 0);
+    activeSlide.querySelector("h3, input")?.focus({ preventScroll: true });
+  };
+
+  form.showRegionStep = showStep;
+  form.querySelectorAll('.region-options input[type="radio"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      const slide = radio.closest(".region-slide");
+      const step = Number(slide.dataset.wizardSlide);
+      markInvalid(slide, false);
+      slide.querySelector(".region-answer-status").textContent = "Conjunto seleccionado. Puedes continuar.";
+      nextButton.disabled = !isComplete(step);
+    });
+  });
+  backButton.addEventListener("click", () => showStep(Number(form.elements["region-step"].value) - 1));
+  nextButton.addEventListener("click", () => {
+    if (nextButton.type === "submit") return;
+    const step = Number(form.elements["region-step"].value);
+    if (!isComplete(step)) return;
+    showStep(step + 1);
+  });
+  showStep(Number(form.elements["region-step"].value) || 0);
 }
 
 function renderMovement() {
-  return `<form novalidate>
-    <div class="challenge-instruction"><strong>Analiza el cuerpo en acci&oacute;n.</strong><p>Selecciona solo huesos pertinentes para cada situaci&oacute;n. Puede haber varias respuestas correctas.</p></div>
-    <div class="movement-cases">${movementCases.map((item) => `<fieldset data-case="${item.id}"><legend>${item.title}</legend><p>${item.prompt}</p><div class="bone-chips">${item.options.map((option) => `<label><input type="checkbox" name="${item.id}" value="${option}" /><span>${option}</span></label>`).join("")}</div></fieldset>`).join("")}</div>
-    <label class="long-answer">Mini-desaf&iacute;o<textarea name="reason" rows="3" minlength="35" required placeholder="Elige uno de los casos y explica por qu&eacute; esos huesos son relevantes..."></textarea></label>
+  return `<form class="movement-wizard" data-movement-wizard novalidate>
+    <input type="hidden" name="movement-step" value="0" />
+    <div class="wizard-progress" aria-live="polite">
+      <div><span data-movement-label>Caso 1 de 4</span><strong data-movement-count>1/4</strong></div>
+      <div class="wizard-progress__track" role="progressbar" aria-label="Progreso de anatom&iacute;a funcional" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" data-movement-progressbar><i data-movement-progress></i></div>
+    </div>
+    <div class="wizard-slides">
+      ${movementCases.map((item, index) => `<section class="wizard-slide movement-slide" data-wizard-slide="${index}" data-case="${item.id}" aria-labelledby="movement-question-${item.id}" ${index === 0 ? "" : "hidden"}>
+        <figure class="specimen-visual movement-visual">
+          <img ${index === 0 ? `src="${asset(`movement-cases/${item.image}.webp`)}"` : ""} data-src="${asset(`movement-cases/${item.image}.webp`)}" width="640" height="640" alt="Situaci&oacute;n funcional: ${item.title}" />
+          <figcaption><span>CASO ${String(index + 1).padStart(2, "0")}</span><small>${item.title}</small></figcaption>
+        </figure>
+        <div class="movement-question">
+          <p>AN&Aacute;LISIS BIOMEC&Aacute;NICO</p>
+          <h3 id="movement-question-${item.id}" tabindex="-1">${item.title}</h3>
+          <p class="movement-question__help">${item.prompt}</p>
+          <fieldset class="movement-options">
+            <legend>Selecciona todos los huesos pertinentes</legend>
+            <div>${item.options.map((option) => `<label><input type="checkbox" name="${item.id}" value="${option}" /><span class="movement-option-visual"><img src="${asset(`bones/${movementBoneImages[option]}.webp`)}" width="640" height="640" alt="" loading="lazy" /><b>${option}</b><i aria-hidden="true">${icon("check")}</i></span></label>`).join("")}</div>
+          </fieldset>
+          <div class="movement-answer-status" role="status">Selecciona al menos una estructura para continuar.</div>
+        </div>
+      </section>`).join("")}
+      <section class="wizard-slide wizard-slide--final" data-wizard-slide="4" hidden>
+        <div class="wizard-final">
+          <span>CIERRE DEL AN&Aacute;LISIS</span>
+          <h3 tabindex="-1">Explica una cadena funcional.</h3>
+          <p>Elige uno de los cuatro casos y relaciona la acci&oacute;n con los huesos que seleccionaste.</p>
+          <label class="long-answer">Mini-desaf&iacute;o<textarea name="reason" rows="4" minlength="35" required placeholder="En el caso de... estos huesos son relevantes porque..."></textarea></label>
+          <div class="wizard-summary"><strong data-movement-answered>0</strong><span>de 4 casos respondidos</span></div>
+        </div>
+      </section>
+    </div>
     <div class="hint-panel" hidden>Relaciona la ubicaci&oacute;n con la funci&oacute;n: el salto concentra carga en el miembro inferior; la caja tor&aacute;cica protege; la columna sostiene y transmite fuerzas.</div>
-    ${challengeActions(2)}
+    <div class="wizard-controls">
+      <button class="secondary-action" data-movement-back type="button">Anterior</button>
+      <button class="hint-button" data-hint type="button" ${state.hintUsed.includes(2) ? "disabled" : ""}>${icon("hint")}${state.hintUsed.includes(2) ? "Pista utilizada" : "Solicitar pista (-20)"}</button>
+      <button class="primary-action" data-movement-next type="button">Siguiente caso ${icon("arrow")}</button>
+    </div>
+    <div class="form-feedback" role="alert" aria-live="assertive"></div>
   </form>`;
+}
+
+function initializeMovementWizard(form) {
+  const finalStep = movementCases.length;
+  const nextButton = form.querySelector("[data-movement-next]");
+  const backButton = form.querySelector("[data-movement-back]");
+
+  const showStep = (requestedStep) => {
+    const step = Math.max(0, Math.min(finalStep, requestedStep));
+    form.elements["movement-step"].value = String(step);
+    form.querySelectorAll("[data-wizard-slide]").forEach((slide) => {
+      slide.hidden = Number(slide.dataset.wizardSlide) !== step;
+    });
+    const activeSlide = form.querySelector(`[data-wizard-slide="${step}"]`);
+    const image = activeSlide.querySelector("img[data-src]");
+    if (image && !image.src) image.src = image.dataset.src;
+    const nextImage = form.querySelector(`[data-wizard-slide="${Math.min(finalStep - 1, step + 1)}"] img[data-src]`);
+    if (nextImage && !nextImage.src) nextImage.src = nextImage.dataset.src;
+
+    const isFinal = step === finalStep;
+    const selected = isFinal ? [] : new FormData(form).getAll(movementCases[step].id);
+    form.querySelector("[data-movement-label]").textContent = isFinal ? "Justificaci\u00f3n final" : `Caso ${step + 1} de 4`;
+    form.querySelector("[data-movement-count]").textContent = isFinal ? "4/4" : `${step + 1}/4`;
+    form.querySelector("[data-movement-progress]").style.transform = `scaleX(${isFinal ? 1 : (step + 1) / 4})`;
+    form.querySelector("[data-movement-progressbar]").setAttribute("aria-valuenow", String(isFinal ? 4 : step + 1));
+    backButton.disabled = step === 0;
+    nextButton.type = isFinal ? "submit" : "button";
+    nextButton.innerHTML = isFinal ? `Verificar reto ${icon("check")}` : `Siguiente caso ${icon("arrow")}`;
+    nextButton.disabled = !isFinal && selected.length === 0;
+    if (!isFinal) activeSlide.querySelector(".movement-answer-status").textContent = selected.length ? `${selected.length} ${selected.length === 1 ? "estructura seleccionada" : "estructuras seleccionadas"}. Puedes continuar.` : "Selecciona al menos una estructura para continuar.";
+    form.querySelector("[data-movement-answered]").textContent = movementCases.filter((item) => new FormData(form).getAll(item.id).length > 0).length;
+    saveDraft(2, form);
+    activeSlide.scrollTop = 0;
+    activeSlide.querySelector(".movement-question")?.scrollTo(0, 0);
+    activeSlide.querySelector("h3, textarea")?.focus({ preventScroll: true });
+  };
+
+  form.showMovementStep = showStep;
+  form.querySelectorAll('.movement-options input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const slide = checkbox.closest(".movement-slide");
+      const selected = new FormData(form).getAll(slide.dataset.case);
+      markInvalid(slide, false);
+      slide.querySelector(".movement-answer-status").textContent = selected.length ? `${selected.length} ${selected.length === 1 ? "estructura seleccionada" : "estructuras seleccionadas"}. Puedes continuar.` : "Selecciona al menos una estructura para continuar.";
+      nextButton.disabled = selected.length === 0;
+    });
+  });
+  backButton.addEventListener("click", () => showStep(Number(form.elements["movement-step"].value) - 1));
+  nextButton.addEventListener("click", () => {
+    if (nextButton.type === "submit") return;
+    const step = Number(form.elements["movement-step"].value);
+    if (new FormData(form).getAll(movementCases[step].id).length === 0) return;
+    showStep(step + 1);
+  });
+  showStep(Number(form.elements["movement-step"].value) || 0);
 }
 
 function renderMysteries() {
-  return `<form novalidate>
-    <div class="challenge-instruction"><strong>Identifica cinco piezas sin ver su etiqueta.</strong><p>Escribe el nombre del hueso y clasif&iacute;calo como axial o apendicular.</p></div>
-    <div class="mystery-list">${mysteries.map((item, index) => `<fieldset data-row="${index}"><legend><span>${index + 1}</span>${item.clue}</legend><div><label>Hueso<input name="mystery-${index}" autocomplete="off" required /></label><label>Sistema<select name="system-${index}" required><option value="">Selecciona</option><option value="axial">Axial</option><option value="appendicular">Apendicular</option></select></label></div></fieldset>`).join("")}</div>
+  return `<form class="mystery-wizard" data-mystery-wizard novalidate>
+    <input type="hidden" name="mystery-step" value="0" />
+    <div class="wizard-progress" aria-live="polite">
+      <div><span data-mystery-label>Pista 1 de 5</span><strong data-mystery-count>1/5</strong></div>
+      <div class="wizard-progress__track" role="progressbar" aria-label="Progreso de identificaci&oacute;n" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" data-mystery-progressbar><i data-mystery-progress></i></div>
+    </div>
+    <div class="wizard-slides">
+      ${mysteries.map((item, index) => `<section class="wizard-slide mystery-slide" data-wizard-slide="${index}" data-row="${index}" aria-labelledby="mystery-question-${index}" ${index === 0 ? "" : "hidden"}>
+        <div class="mystery-evidence">
+          <div class="mystery-evidence__index"><span>FICHA SIN ETIQUETA</span><strong>${String(index + 1).padStart(2, "0")}</strong></div>
+          <blockquote>${item.clue}</blockquote>
+          <div class="mystery-evidence__keys"><span>UBICACI&Oacute;N</span><span>FORMA</span><span>FUNCI&Oacute;N</span></div>
+        </div>
+        <div class="mystery-question">
+          <p>PROTOCOLO DE IDENTIFICACI&Oacute;N</p>
+          <h3 id="mystery-question-${index}" tabindex="-1">&iquest;Qu&eacute; hueso describe la pista?</h3>
+          <ol class="mystery-instructions" aria-label="Pasos para responder">
+            <li><b>1</b><span>Lee la pista y localiza la regi&oacute;n corporal.</span></li>
+            <li><b>2</b><span>Escribe el nombre del hueso en singular.</span></li>
+            <li><b>3</b><span>Indica si pertenece al sistema axial o apendicular.</span></li>
+          </ol>
+          <label class="mystery-name">Nombre del hueso<input name="mystery-${index}" autocomplete="off" required placeholder="Ejemplo: f&eacute;mur" /></label>
+          <fieldset class="mystery-system">
+            <legend>Sistema esquel&eacute;tico</legend>
+            <div>
+              <label><input type="radio" name="system-${index}" value="axial" /><span><b>Axial</b><small>Eje central del cuerpo</small></span></label>
+              <label><input type="radio" name="system-${index}" value="appendicular" /><span><b>Apendicular</b><small>Cinturas y extremidades</small></span></label>
+            </div>
+          </fieldset>
+          <div class="mystery-answer-status" role="status">Completa el nombre y el sistema para continuar.</div>
+        </div>
+      </section>`).join("")}
+      <section class="wizard-slide wizard-slide--final" data-wizard-slide="5" hidden>
+        <div class="wizard-final mystery-review">
+          <span>REVISI&Oacute;N DE IDENTIFICACIONES</span>
+          <h3 tabindex="-1">Confirma tus cinco fichas.</h3>
+          <p>Comprueba que cada nombre coincida con la pista y que su sistema esquel&eacute;tico sea correcto antes de verificar.</p>
+          <div class="mystery-review__list">
+            ${mysteries.map((_, index) => `<div><span>${String(index + 1).padStart(2, "0")}</span><b data-review-bone="${index}">Sin responder</b><small data-review-system="${index}">Sistema pendiente</small></div>`).join("")}
+          </div>
+          <div class="wizard-summary"><strong data-mystery-answered>0</strong><span>de 5 fichas completas</span></div>
+        </div>
+      </section>
+    </div>
     <div class="hint-panel" hidden>Las iniciales de las respuestas forman F-E-E-V-O. Revisa que cada nombre coincida con la ubicaci&oacute;n descrita.</div>
-    ${challengeActions(3)}
+    <div class="wizard-controls">
+      <button class="secondary-action" data-mystery-back type="button">Anterior</button>
+      <button class="hint-button" data-hint type="button" ${state.hintUsed.includes(3) ? "disabled" : ""}>${icon("hint")}${state.hintUsed.includes(3) ? "Pista utilizada" : "Solicitar pista (-20)"}</button>
+      <button class="primary-action" data-mystery-next type="button">Siguiente pista ${icon("arrow")}</button>
+    </div>
+    <div class="form-feedback" role="alert" aria-live="assertive"></div>
   </form>`;
 }
 
+function initializeMysteryWizard(form) {
+  const finalStep = mysteries.length;
+  const nextButton = form.querySelector("[data-mystery-next]");
+  const backButton = form.querySelector("[data-mystery-back]");
+  const isComplete = (step) => form.elements[`mystery-${step}`].value.trim() && new FormData(form).get(`system-${step}`);
+
+  const showStep = (requestedStep) => {
+    const step = Math.max(0, Math.min(finalStep, requestedStep));
+    form.elements["mystery-step"].value = String(step);
+    form.querySelectorAll("[data-wizard-slide]").forEach((slide) => {
+      slide.hidden = Number(slide.dataset.wizardSlide) !== step;
+    });
+    const activeSlide = form.querySelector(`[data-wizard-slide="${step}"]`);
+    const isFinal = step === finalStep;
+    form.querySelector("[data-mystery-label]").textContent = isFinal ? "Revisi\u00f3n final" : `Pista ${step + 1} de 5`;
+    form.querySelector("[data-mystery-count]").textContent = isFinal ? "5/5" : `${step + 1}/5`;
+    form.querySelector("[data-mystery-progress]").style.transform = `scaleX(${isFinal ? 1 : (step + 1) / 5})`;
+    form.querySelector("[data-mystery-progressbar]").setAttribute("aria-valuenow", String(isFinal ? 5 : step + 1));
+    backButton.disabled = step === 0;
+    nextButton.type = isFinal ? "submit" : "button";
+    nextButton.innerHTML = isFinal ? `Verificar reto ${icon("check")}` : `Siguiente pista ${icon("arrow")}`;
+    nextButton.disabled = !isFinal && !isComplete(step);
+
+    if (!isFinal) {
+      activeSlide.querySelector(".mystery-answer-status").textContent = isComplete(step) ? "Identificaci\u00f3n completa. Puedes continuar." : "Completa el nombre y el sistema para continuar.";
+    }
+    mysteries.forEach((_, index) => {
+      const bone = form.elements[`mystery-${index}`].value.trim();
+      const system = new FormData(form).get(`system-${index}`);
+      form.querySelector(`[data-review-bone="${index}"]`).textContent = bone || "Sin responder";
+      form.querySelector(`[data-review-system="${index}"]`).textContent = system ? (system === "axial" ? "Sistema axial" : "Sistema apendicular") : "Sistema pendiente";
+    });
+    form.querySelector("[data-mystery-answered]").textContent = mysteries.filter((_, index) => isComplete(index)).length;
+    saveDraft(3, form);
+    activeSlide.scrollTop = 0;
+    activeSlide.querySelector(".mystery-question")?.scrollTo(0, 0);
+    activeSlide.querySelector("h3, input")?.focus({ preventScroll: true });
+  };
+
+  form.showMysteryStep = showStep;
+  form.querySelectorAll('.mystery-name input, .mystery-system input[type="radio"]').forEach((control) => {
+    control.addEventListener("input", () => {
+      const slide = control.closest(".mystery-slide");
+      const step = Number(slide.dataset.wizardSlide);
+      markInvalid(slide, false);
+      slide.querySelector(".mystery-answer-status").textContent = isComplete(step) ? "Identificaci\u00f3n completa. Puedes continuar." : "Completa el nombre y el sistema para continuar.";
+      nextButton.disabled = !isComplete(step);
+    });
+  });
+  backButton.addEventListener("click", () => showStep(Number(form.elements["mystery-step"].value) - 1));
+  nextButton.addEventListener("click", () => {
+    if (nextButton.type === "submit") return;
+    const step = Number(form.elements["mystery-step"].value);
+    if (!isComplete(step)) return;
+    showStep(step + 1);
+  });
+  showStep(Number(form.elements["mystery-step"].value) || 0);
+}
+
+const finalComponents = [
+  { key: "axial", type: "input", label: "Dos huesos axiales importantes para la postura", placeholder: "Separados por coma", help: "Piensa en el eje central que sostiene el tronco." },
+  { key: "appendicular", type: "input", label: "Tres huesos apendiculares del miembro inferior", placeholder: "Separados por coma", help: "Recorre la extremidad desde el muslo hasta el pie." },
+  { key: "connector", type: "input", label: "Estructura que une el miembro inferior al esqueleto axial", placeholder: "Una estructura", help: "Transfiere la carga del eje hacia las piernas." },
+  { key: "load", type: "input", label: "Hueso que recibe la carga entre f\u00e9mur y tobillo", placeholder: "Un hueso", help: "Es el principal hueso de carga de la pierna." },
+  { key: "reason", type: "textarea", label: "\u00bfPor qu\u00e9 clasificar los huesos ayuda a analizar el movimiento?", minlength: 45, help: "Relaciona estructura, funci\u00f3n y movimiento (m\u00ednimo 45 caracteres)." },
+  { key: "phrase", type: "textarea", label: "Construye la frase de salida", help: "Incluye: axial, apendicular, movimiento y protecci\u00f3n." },
+];
+
 function renderFinalCase() {
-  return `<form novalidate>
-    <div class="case-file">
-      <span>CASO DEPORTIVO / SALTO VERTICAL</span>
-      <p>Una estudiante analiza qu&eacute; estructuras pertenecen al eje corporal y cu&aacute;les al aparato locomotor de las extremidades.</p>
+  return `<form class="final-wizard" data-final-wizard novalidate>
+    <input type="hidden" name="final-step" value="0" />
+    <div class="wizard-progress" aria-live="polite">
+      <div><span data-final-label>Componente 1 de 6</span><strong data-final-count>1/6</strong></div>
+      <div class="wizard-progress__track" role="progressbar" aria-label="Progreso del caso deportivo" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1" data-final-progressbar><i data-final-progress></i></div>
     </div>
-    <div class="final-questions">
-      <label data-row="axial"><span>1</span><b>Dos huesos axiales importantes para la postura</b><input name="axial" required placeholder="Separados por coma" /></label>
-      <label data-row="appendicular"><span>2</span><b>Tres huesos apendiculares del miembro inferior</b><input name="appendicular" required placeholder="Separados por coma" /></label>
-      <label data-row="connector"><span>3</span><b>Estructura que une el miembro inferior al esqueleto axial</b><input name="connector" required /></label>
-      <label data-row="load"><span>4</span><b>Hueso que recibe directamente la carga entre f&eacute;mur y tobillo</b><input name="load" required /></label>
-      <label class="long-answer" data-row="reason"><span>5</span><b>&iquest;Por qu&eacute; clasificar los huesos ayuda a analizar el movimiento?<button type="button" class="field-tip" aria-label="Ayuda" data-tooltip="Respuesta libre: explica con tus propias palabras (m&iacute;nimo 45 caracteres).">i</button></b><textarea name="reason" rows="3" minlength="45" required></textarea></label>
-      <label class="long-answer exit-phrase" data-row="phrase"><span>6</span><b>Construye la frase de salida<button type="button" class="field-tip" aria-label="Ayuda" data-tooltip="Respuesta libre, red&aacute;ctala a tu manera. Debe incluir las palabras: axial, apendicular, movimiento y protecci&oacute;n.">i</button></b><textarea name="phrase" rows="2" required></textarea></label>
+    <div class="wizard-slides">
+      ${finalComponents.map((step, index) => `<section class="wizard-slide final-slide" data-wizard-slide="${index}" data-row="${step.key}" aria-labelledby="final-question-${index}" ${index === 0 ? "" : "hidden"}>
+        <figure class="specimen-visual final-visual">
+          <img src="${asset("movement-cases/salto-aterrizaje.webp")}" width="640" height="640" alt="Caso deportivo: an&aacute;lisis de un salto vertical" />
+          <figcaption><span>CASO / SALTO VERTICAL</span><small>Componente ${index + 1} de 6</small></figcaption>
+        </figure>
+        <div class="final-question">
+          <p>PROTOCOLO DE SALIDA</p>
+          <h3 id="final-question-${index}" tabindex="-1">${step.label}</h3>
+          <p class="final-question__help">${step.help}</p>
+          <label class="final-field">${step.type === "textarea" ? `<textarea name="${step.key}" rows="4"${step.minlength ? ` minlength="${step.minlength}"` : ""} required placeholder="Escribe tu respuesta..."></textarea>` : `<input name="${step.key}" autocomplete="off" required placeholder="${step.placeholder}" />`}</label>
+          <div class="final-answer-status" role="status">Escribe tu respuesta para continuar.</div>
+        </div>
+      </section>`).join("")}
+      <section class="wizard-slide wizard-slide--final" data-wizard-slide="6" hidden>
+        <div class="wizard-final final-review">
+          <span>REVISI&Oacute;N DEL PROTOCOLO</span>
+          <h3 tabindex="-1">Confirma tu caso deportivo.</h3>
+          <p>Revisa cada componente antes de liberar la salida.</p>
+          <div class="final-review__list">
+            ${finalComponents.map((step, index) => `<div><span>${index + 1}</span><b>${step.label}</b><small data-review-final="${index}">Sin responder</small></div>`).join("")}
+          </div>
+          <div class="wizard-summary"><strong data-final-answered>0</strong><span>de 6 componentes escritos</span></div>
+        </div>
+      </section>
     </div>
     <div class="hint-panel" hidden>La cintura p&eacute;lvica transfiere cargas del eje a los miembros inferiores. En la pierna, la tibia es el principal hueso de carga.</div>
-    ${challengeActions(4)}
+    <div class="wizard-controls">
+      <button class="secondary-action" data-final-back type="button">Anterior</button>
+      <button class="hint-button" data-hint type="button" ${state.hintUsed.includes(4) ? "disabled" : ""}>${icon("hint")}${state.hintUsed.includes(4) ? "Pista utilizada" : "Solicitar pista (-20)"}</button>
+      <button class="primary-action" data-final-next type="button">Siguiente componente ${icon("arrow")}</button>
+    </div>
+    <div class="form-feedback" role="alert" aria-live="assertive"></div>
   </form>`;
+}
+
+function initializeFinalWizard(form) {
+  const finalStep = finalComponents.length;
+  const nextButton = form.querySelector("[data-final-next]");
+  const backButton = form.querySelector("[data-final-back]");
+  const valueOf = (i) => form.elements[finalComponents[i].key].value.trim();
+  const isComplete = (i) => valueOf(i).length > 0;
+
+  const showStep = (requestedStep) => {
+    const step = Math.max(0, Math.min(finalStep, requestedStep));
+    form.elements["final-step"].value = String(step);
+    form.querySelectorAll("[data-wizard-slide]").forEach((slide) => {
+      slide.hidden = Number(slide.dataset.wizardSlide) !== step;
+    });
+    const activeSlide = form.querySelector(`[data-wizard-slide="${step}"]`);
+    const isFinal = step === finalStep;
+    form.querySelector("[data-final-label]").textContent = isFinal ? "Revisi\u00f3n final" : `Componente ${step + 1} de 6`;
+    form.querySelector("[data-final-count]").textContent = isFinal ? "6/6" : `${step + 1}/6`;
+    form.querySelector("[data-final-progress]").style.transform = `scaleX(${isFinal ? 1 : (step + 1) / 6})`;
+    form.querySelector("[data-final-progressbar]").setAttribute("aria-valuenow", String(isFinal ? 6 : step + 1));
+    backButton.disabled = step === 0;
+    nextButton.type = isFinal ? "submit" : "button";
+    nextButton.innerHTML = isFinal ? `Verificar reto ${icon("check")}` : `Siguiente componente ${icon("arrow")}`;
+    nextButton.disabled = !isFinal && !isComplete(step);
+
+    if (!isFinal) {
+      activeSlide.querySelector(".final-answer-status").textContent = isComplete(step) ? "Respuesta registrada. Puedes continuar." : "Escribe tu respuesta para continuar.";
+    }
+    finalComponents.forEach((_, index) => {
+      const value = valueOf(index);
+      form.querySelector(`[data-review-final="${index}"]`).textContent = value ? (value.length > 64 ? `${value.slice(0, 64)}\u2026` : value) : "Sin responder";
+    });
+    form.querySelector("[data-final-answered]").textContent = finalComponents.filter((_, index) => isComplete(index)).length;
+    saveDraft(4, form);
+    activeSlide.scrollTop = 0;
+    activeSlide.querySelector(".final-question")?.scrollTo(0, 0);
+    activeSlide.querySelector("h3, input, textarea")?.focus({ preventScroll: true });
+  };
+
+  form.showFinalStep = showStep;
+  form.querySelectorAll(".final-field input, .final-field textarea").forEach((control) => {
+    control.addEventListener("input", () => {
+      const slide = control.closest(".final-slide");
+      const step = Number(slide.dataset.wizardSlide);
+      markInvalid(slide, false);
+      slide.querySelector(".final-answer-status").textContent = isComplete(step) ? "Respuesta registrada. Puedes continuar." : "Escribe tu respuesta para continuar.";
+      nextButton.disabled = !isComplete(step);
+    });
+  });
+  backButton.addEventListener("click", () => showStep(Number(form.elements["final-step"].value) - 1));
+  nextButton.addEventListener("click", () => {
+    if (nextButton.type === "submit") return;
+    const step = Number(form.elements["final-step"].value);
+    if (!isComplete(step)) return;
+    showStep(step + 1);
+  });
+  showStep(Number(form.elements["final-step"].value) || 0);
 }
 
 function revealHint(index) {
@@ -404,18 +930,27 @@ function validateChallenge(event, index) {
   if (index === 3) result = validateMysteries(form);
   if (index === 4) result = validateFinal(form);
   if (result.ok) completeChallenge(index, result.answers);
-  else registerFailure(form, result.message);
+  else {
+    if (index === 0 && Number.isInteger(result.focusStep)) form.showClassificationStep(result.focusStep);
+    if (index === 1 && Number.isInteger(result.focusStep)) form.showRegionStep(result.focusStep);
+    if (index === 2 && Number.isInteger(result.focusStep)) form.showMovementStep(result.focusStep);
+    if (index === 3 && Number.isInteger(result.focusStep)) form.showMysteryStep(result.focusStep);
+    if (index === 4 && Number.isInteger(result.focusStep)) form.showFinalStep(result.focusStep);
+    registerFailure(form, result.message);
+  }
 }
 
 function validateClassification(form) {
   let correct = 0;
+  let firstWrong = null;
   const selections = {};
-  classificationItems.forEach(([number, , answer]) => {
+  classificationItems.forEach(([number, , answer], index) => {
     const value = new FormData(form).get(`bone-${number}`);
     selections[number] = value;
     const row = form.querySelector(`[data-row="${number}"]`);
     const isCorrect = value === answer;
     markInvalid(row, !isCorrect);
+    if (!isCorrect && firstWrong === null) firstWrong = index;
     if (isCorrect) correct += 1;
   });
   const reason = form.elements.reason.value.trim();
@@ -423,6 +958,7 @@ function validateClassification(form) {
   return {
     ok,
     message: correct < classificationItems.length ? `${correct} de 12 clasificaciones son correctas. Revisa las muestras marcadas.` : "La clasificaci&oacute;n es correcta; ampl&iacute;a la justificaci&oacute;n a por lo menos 30 caracteres.",
+    focusStep: firstWrong ?? classificationItems.length,
     answers: { selections, reason, code: 37 },
   };
 }
@@ -430,16 +966,19 @@ function validateClassification(form) {
 function validateRegions(form) {
   const answers = {};
   let correct = 0;
+  let firstWrong = null;
   regions.forEach(([, answer], index) => {
-    const value = form.elements[`region-${index}`].value;
+    const value = new FormData(form).get(`region-${index}`) || "";
     answers[index] = value;
     const row = form.querySelector(`[data-row="${index}"]`);
     markInvalid(row, value !== answer);
+    if (value !== answer && firstWrong === null) firstWrong = index;
     if (value === answer) correct += 1;
   });
   return {
     ok: correct === regions.length,
-    message: `${correct} de 7 regiones est&aacute;n bien relacionadas. Revisa las filas se&ntilde;aladas.`,
+    message: `${correct} de 7 regiones est&aacute;n bien relacionadas. Revisa las regiones se&ntilde;aladas.`,
+    focusStep: firstWrong,
     answers: { matches: answers, code: "EFB" },
   };
 }
@@ -447,11 +986,13 @@ function validateRegions(form) {
 function validateMovement(form) {
   const answers = {};
   let correctCases = 0;
-  movementCases.forEach((item) => {
+  let firstWrong = null;
+  movementCases.forEach((item, index) => {
     const selected = new FormData(form).getAll(item.id);
     answers[item.id] = selected;
     const valid = selected.length >= item.minimum && selected.every((value) => item.answers.includes(value));
     markInvalid(form.querySelector(`[data-case="${item.id}"]`), !valid);
+    if (!valid && firstWrong === null) firstWrong = index;
     if (valid) correctCases += 1;
   });
   const reason = form.elements.reason.value.trim();
@@ -459,6 +1000,7 @@ function validateMovement(form) {
   return {
     ok,
     message: correctCases < movementCases.length ? `${correctCases} de 4 casos tienen una selecci&oacute;n pertinente. Retira distractores o agrega estructuras clave.` : "Las selecciones son pertinentes; desarrolla un poco m&aacute;s el mini-desaf&iacute;o.",
+    focusStep: firstWrong ?? movementCases.length,
     answers: { cases: answers, reason },
   };
 }
@@ -466,17 +1008,20 @@ function validateMovement(form) {
 function validateMysteries(form) {
   const answers = [];
   let correct = 0;
+  let firstWrong = null;
   mysteries.forEach((item, index) => {
     const bone = normalize(form.elements[`mystery-${index}`].value);
     const system = form.elements[`system-${index}`].value;
     const valid = item.answer.includes(bone) && system === item.system;
     markInvalid(form.querySelector(`[data-row="${index}"]`), !valid);
+    if (!valid && firstWrong === null) firstWrong = index;
     answers.push({ bone, system });
     if (valid) correct += 1;
   });
   return {
     ok: correct === mysteries.length,
     message: `${correct} de 5 identificaciones son correctas. Contrasta la ubicaci&oacute;n y el sistema de las piezas marcadas.`,
+    focusStep: firstWrong,
     answers: { mysteries: answers, code: "FEEVO" },
   };
 }
@@ -496,10 +1041,15 @@ function validateFinal(form) {
     phrase: ["axial", "apendicular", "movimiento", "proteccion"].every((word) => normalize(data.phrase).includes(word)),
   };
   Object.entries(checks).forEach(([key, valid]) => markInvalid(form.querySelector(`[data-row="${key}"]`), !valid));
+  let firstWrong = null;
+  finalComponents.forEach((step, index) => {
+    if (!checks[step.key] && firstWrong === null) firstWrong = index;
+  });
   const correct = Object.values(checks).filter(Boolean).length;
   return {
     ok: correct === 6,
-    message: `${correct} de 6 componentes cumplen el protocolo. Revisa los campos se&ntilde;alados y conserva la justificaci&oacute;n anat&oacute;mica.`,
+    message: `${correct} de 6 componentes cumplen el protocolo. Revisa los componentes se&ntilde;alados y conserva la justificaci&oacute;n anat&oacute;mica.`,
+    focusStep: firstWrong,
     answers: data,
   };
 }
@@ -530,6 +1080,7 @@ function completeChallenge(index, answers) {
   state.current = Math.min(4, Math.max(state.current, index + 1));
   persist();
   const dialog = document.querySelector("#challenge-dialog");
+  dialog.querySelector(".dialog-body").classList.remove("dialog-body--wizard");
   const codes = ["37", "EFB", "MOV", "FEEVO", "SALIDA"];
   dialog.querySelector(".dialog-body").innerHTML = `
     <div class="success-seal">
@@ -621,7 +1172,7 @@ function renderReport() {
     persist();
   });
   document.querySelector("#download-results").addEventListener("click", downloadReport);
-  document.querySelector("#new-mission").addEventListener("click", confirmReset);
+  document.querySelector("#new-mission").addEventListener("click", openResetDialog);
 }
 
 async function sendResults() {
