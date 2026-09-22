@@ -102,7 +102,7 @@ Density is purposeful. The mission table keeps the skeleton, five sequential clo
 - Square, bordered, mechanically aligned controls with almost no decorative rounding.
 - Sequential opening of compartments as the signature interaction.
 
-Asset boundaries are strict. `assets/logo-cecar.png` and `assets/favicon.ico` are supplied CECAR institutional marks; preserve their files and proportions rather than recreating or recoloring them. `assets/skeleton-mission.webp` is the shipped generated anatomy illustration; its prompt and creation timestamp live in `assets/skeleton-mission.webp.json`, and no provider or external license is asserted. Interface icons are locally authored inline SVG paths in `src/main.js`. Atkinson Hyperlegible Next and Barlow Condensed are loaded from Google Fonts. Review screenshots are evidence, not reusable product assets.
+Asset boundaries are strict. `assets/logo-cecar.png` and `assets/favicon.ico` are supplied CECAR institutional marks; preserve their files and proportions rather than recreating or recoloring them. `assets/skeleton-mission.webp`, the bone specimen images in `assets/bones/`, and the four functional cases in `assets/movement-cases/` are shipped generated anatomy illustrations; each prompt and creation timestamp lives in its adjacent same-name JSON file, and no provider or external license is asserted. Interface icons are locally authored inline SVG paths in `src/main.js`. Atkinson Hyperlegible Next and Barlow Condensed are loaded from Google Fonts. Review screenshots are evidence, not reusable product assets.
 
 ## Colors
 
@@ -153,7 +153,7 @@ The desktop system uses centered fluid containers: the intro is capped at `86rem
 
 The intro is a two-column split between dark mission copy and a paper intake sheet. The mission tray is a two-column instrument: skeleton stage at roughly two-fifths, five challenge closures at three-fifths. The report pairs a circular release stamp with the outcome, then spans metrics and a paper evidence panel across the container.
 
-At `900px`, the intro stacks, the header and tray tighten, challenge descriptions hide, final-case forms reduce to two columns, and report actions stack structurally. At `680px`, the header becomes two rows and stops sticking; the tray becomes one continuous vertical specimen with skeleton above closures; descriptions return; footer labels disappear; challenge grids become one column; actions stack primary-first; reports use a two-by-two metric grid. Challenge dialogs become full-viewport (`100dvh`) with a narrow `3rem` cyan rail, sticky paper header, and independently scrolling body. The implementation supports a minimum viewport width of `320px`.
+At `900px`, the intro stacks, the header and tray tighten, challenge descriptions hide, final-case forms reduce to two columns, and report actions stack structurally. At `680px`, the header becomes two rows and stops sticking; the tray becomes one continuous vertical specimen with skeleton above closures; descriptions return; footer labels disappear; challenge grids become one column; actions stack primary-first; reports use a two-by-two metric grid. Challenge dialogs become full-viewport (`100dvh`) with a narrow `3rem` cyan rail, sticky paper header, and independently scrolling body. The classification station uses the full viewport at every size: specimen and decision panel share the desktop canvas, then stack on phones while preserving the image and navigation in view; only the question panel may scroll as a fallback on very short screens. The implementation supports a minimum viewport width of `320px`.
 
 **The Continuous Instrument Rule.** Related rows share one ruled container; do not break the tray, metrics, or challenge options into floating rounded cards.
 
@@ -203,6 +203,20 @@ The form language is machined and rectilinear. Controls use a nearly square `2px
 ### Challenge Dialog
 
 The native modal dialog opens with `showModal()`: desktop uses a `5.5rem` cyan station rail and scrollable paper body; mobile uses a `3rem` rail and fills the viewport. Its header remains sticky, the close control is explicitly labeled, native modal focus/escape behavior is preserved, and the dark blurred backdrop isolates the task. Opening animates for `420ms` with opacity, upward translation, slight scale, and a top-down clip reveal. Verification replaces the form with a centered seal and recovered code; reopening a completed station shows a read-only summary.
+
+The first station is a full-screen specimen wizard rather than a centered compartment. A compact header and linear progress readout frame one sample at a time. Desktop gives the specimen the leading left field and groups the prompt, two continuous answer rows, and status on the right; navigation stays anchored below both. Phone portrait keeps a reduced specimen above a scroll-safe question panel, with Back and Hint above the full-width primary action. Phone landscape returns to a compact split view. Images use `object-fit: contain`, preload only the next sample, and never determine the page height from their intrinsic dimensions.
+
+The third station reuses the full-screen wizard for four named functional cases followed by one written synthesis. Each case image depicts the movement or loading situation without labels, exposed anatomy, or highlighted answers. The decision panel presents each bone as a selectable specimen tile with its image and name; an always-visible square communicates interactivity, then fills with a cyan check while the selected tile darkens. The matrix uses four columns on desktop, three on phones, and two at the narrowest supported width. Validation returns directly to the first incomplete case while preserving every choice. File slugs mirror the case names so content, image, alt text, and provenance remain traceable.
+
+The second station is a full-screen cartography wizard with seven region steps and a final review. Each step names one body region in the dark evidence field; the paper panel presents the seven bone sets as single-select rows so the student assigns exactly one set per region. The review sheet lists every region with its chosen set, and validation returns to the first mismatched region while preserving the rest.
+
+The fourth station is a full-screen blind-identification wizard with five clues and a final review. Each clue occupies the dark evidence field and deliberately exposes only location, shape, and function language rather than an image. The paper response panel repeats a three-step protocol: locate the region, name the bone in singular, and classify it as axial or appendicular. Both the text field and system choice are required before advancing. The review sheet lists all five names and systems, and validation returns to the first incorrect clue while preserving the remaining answers.
+
+All wizard stations share one form grid (`auto minmax(0,1fr) auto auto auto`) so the progress readout and navigation stay pinned while only the active slide's answer panel scrolls; every new wizard form must be added to that shared grid rule or it will overflow the viewport.
+
+### Reset Dialog
+
+Resetting uses a dedicated paper compartment instead of a browser confirmation. A coral rail identifies the destructive context while two explicit choices separate scope: restarting challenges preserves the current student and creates a fresh session identifier; changing student removes the complete local session and returns to access. Cancellation is the initial focus target, Escape cancels safely, and the copy states that previously submitted rows cannot be removed. On phones the options stack without changing their order or meaning.
 
 ### Feedback And Motion
 
