@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-22T13:10:40.3407261-05:00",
+  "title": "Design System: Mision Esqueleto",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "neutral", "displayName": "Readout White", "canonical": "#eef5f5" },
+      "muted": { "role": "neutral", "displayName": "Muted Steel Text", "canonical": "#aebec3" },
+      "dim": { "role": "neutral", "displayName": "Dim Instrument Text", "canonical": "#70838b" },
+      "navy-950": { "role": "neutral", "displayName": "Room Navy", "canonical": "#061019", "tonalRamp": ["#03080d", "#061019", "#0b1e2d", "#173246", "#365467", "#66808d", "#a9bbc1", "#edf3f4"] },
+      "navy-900": { "role": "neutral", "displayName": "Chrome Navy", "canonical": "#0b1824" },
+      "navy-850": { "role": "neutral", "displayName": "Tray Navy", "canonical": "#102230" },
+      "navy-800": { "role": "neutral", "displayName": "Inset Navy", "canonical": "#17303d" },
+      "steel": { "role": "neutral", "displayName": "Instrument Steel", "canonical": "#8ca3aa" },
+      "steel-line": { "role": "neutral", "displayName": "Steel Rule", "canonical": "rgba(184, 209, 214, 0.24)" },
+      "paper": { "role": "neutral", "displayName": "Clinical Paper", "canonical": "#e8e7dd", "tonalRamp": ["#24241f", "#44443d", "#66665d", "#898980", "#acaca3", "#cecec5", "#e8e7dd", "#f7f7f2"] },
+      "paper-ink": { "role": "neutral", "displayName": "Paper Ink", "canonical": "#15252c" },
+      "cyan": { "role": "primary", "displayName": "Examination Cyan", "canonical": "#55d5df", "tonalRamp": ["#092d31", "#0e4b51", "#176a72", "#258a94", "#38abb6", "#55d5df", "#9ceaf0", "#e8fcfd"] },
+      "cyan-soft": { "role": "primary", "displayName": "Soft Examination Cyan", "canonical": "#a6edf0" },
+      "coral": { "role": "secondary", "displayName": "Anatomical Coral", "canonical": "#ff765f", "tonalRamp": ["#38120d", "#5f2017", "#873025", "#b14435", "#dc5a47", "#ff765f", "#ffb2a2", "#fff0ec"] },
+      "coral-soft": { "role": "secondary", "displayName": "Soft Anatomical Coral", "canonical": "#ffb2a2" },
+      "yellow": { "role": "tertiary", "displayName": "Attention Yellow", "canonical": "#f3d36b", "tonalRamp": ["#302707", "#55460d", "#7a6718", "#a08728", "#c6a941", "#f3d36b", "#f8e5a5", "#fff9e5"] },
+      "danger": { "role": "tertiary", "displayName": "Protocol Danger", "canonical": "#ff8e7d" },
+      "success": { "role": "tertiary", "displayName": "Release Green", "canonical": "#73e3bd", "tonalRamp": ["#0a3024", "#11513d", "#1d7358", "#309675", "#4cba94", "#73e3bd", "#acefd7", "#eafbf5"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Protocol Display", "purpose": "Intro and release statements only." },
+      "headline": { "displayName": "Station Headline", "purpose": "Mission and dialog headings." },
+      "title": { "displayName": "Instrument Title", "purpose": "Section instructions and case titles." },
+      "body": { "displayName": "Educational Body", "purpose": "Instructions, explanations, fields, and feedback." },
+      "label": { "displayName": "Protocol Label", "purpose": "Readouts, specimen codes, and metadata." }
+    },
+    "shadows": [
+      { "name": "tray-ambient", "value": "0 18px 45px rgba(0, 0, 0, 0.34)", "purpose": "Physical lift for the specimen tray and toast." },
+      { "name": "tray-inset", "value": "inset 0 0 0 8px rgba(5, 15, 23, 0.4)", "purpose": "Machined inner lip of the specimen tray." },
+      { "name": "dialog-lift", "value": "0 28px 80px rgba(0, 0, 0, 0.58)", "purpose": "Separates the open paper compartment from the dark room." },
+      { "name": "paper-side-cast", "value": "-22px 0 50px rgba(0, 0, 0, 0.18)", "purpose": "Makes the intake panel read as a sheet placed over the room." },
+      { "name": "action-rest", "value": "0 10px 24px rgba(44, 158, 168, 0.2)", "purpose": "Resting lift for primary actions." },
+      { "name": "action-hover", "value": "0 13px 30px rgba(44, 158, 168, 0.27)", "purpose": "Hover lift for primary actions." }
+    ],
+    "motion": [
+      { "name": "state", "value": "180ms ease", "purpose": "Buttons, rows, and toast state changes." },
+      { "name": "progress", "value": "500ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Progress-track release movement." },
+      { "name": "compartment-open", "value": "420ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Dialog opacity, translation, scale, and clip reveal." },
+      { "name": "reduced", "value": "0.01ms, 1 iteration", "purpose": "Required override under prefers-reduced-motion: reduce." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "900px" },
+      { "name": "phone", "value": "680px" },
+      { "name": "minimum", "value": "320px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The cyan proceed or verify control on dark and paper surfaces.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Verificar protocolo <span aria-hidden=\"true\">→</span></button>",
+      "css": ".ds-primary{display:inline-flex;min-height:3.25rem;align-items:center;justify-content:center;gap:.65rem;padding:.85rem 1.2rem;border:0;border-radius:2px;color:#061019;background:#55d5df;box-shadow:0 10px 24px rgba(44,158,168,.2);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;font-weight:800;transition:background-color 180ms ease,transform 180ms ease,box-shadow 180ms ease}.ds-primary:hover{background:#a6edf0;transform:translateY(-2px);box-shadow:0 13px 30px rgba(44,158,168,.27)}.ds-primary:focus-visible{outline:3px solid #f3d36b;outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A restrained paper-surface action for downloading or returning.",
+      "html": "<button class=\"ds-secondary\" type=\"button\">Descargar reporte</button>",
+      "css": ".ds-secondary{min-height:3.25rem;padding:.85rem 1.2rem;border:1px solid #526a71;border-radius:2px;color:#20383f;background:transparent;font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;font-weight:800;transition:background-color 180ms ease,color 180ms ease}.ds-secondary:hover{color:#fff;background:#20383f}.ds-secondary:focus-visible{outline:3px solid #f3d36b;outline-offset:3px}"
+    },
+    {
+      "name": "Paper Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "The standard student-entry field inside paper sheets and compartments.",
+      "html": "<label class=\"ds-field\">Nombre completo<input placeholder=\"Escribe tu nombre\"></label>",
+      "css": ".ds-field{display:grid;gap:.5rem;color:#15252c;font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;font-size:.86rem;font-weight:700}.ds-field input{width:100%;min-height:3rem;padding:.7rem .85rem;border:1px solid rgba(82,106,113,.48);border-radius:2px;color:#15252c;background:rgba(255,255,255,.54);font:inherit;font-weight:400;caret-color:#c54935}.ds-field input:focus-visible{outline:3px solid #f3d36b;outline-offset:3px}"
+    },
+    {
+      "name": "Movement Chip",
+      "kind": "chip",
+      "description": "A rectangular multi-select anatomy choice with visible selected and focus states.",
+      "html": "<label class=\"ds-chip\"><input type=\"checkbox\"><span>Escapula</span></label>",
+      "css": ".ds-chip{position:relative;font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif}.ds-chip input{position:absolute;opacity:0}.ds-chip span{display:block;padding:.4rem .65rem;border:1px solid rgba(40,72,79,.35);color:#15252c;background:#e8e7dd;font-size:.78rem;font-weight:700}.ds-chip input:checked+span{color:#fff;background:#176c76;border-color:#176c76}.ds-chip input:focus-visible+span{outline:3px solid #a77a00;outline-offset:2px}"
+    },
+    {
+      "name": "Challenge Slot",
+      "kind": "nav",
+      "description": "The ruled station closure used for sequential mission navigation.",
+      "html": "<button class=\"ds-slot\" type=\"button\"><b>01</b><span><small>A/P / DISPONIBLE</small><strong>Axial o apendicular</strong><em>Clasifica doce huesos.</em></span><i aria-hidden=\"true\">⌑</i></button>",
+      "css": ".ds-slot{display:grid;width:100%;grid-template-columns:3.8rem 1fr 2.6rem;gap:1rem;align-items:center;padding:1rem 0;border:0;border-bottom:1px solid rgba(184,209,214,.24);color:#eef5f5;text-align:left;background:transparent;font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;transition:transform 180ms ease,background-color 180ms ease}.ds-slot>b{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:2.8rem}.ds-slot span{display:grid;gap:.15rem}.ds-slot small{color:#a6edf0;font-size:.66rem;font-weight:800;letter-spacing:.12em}.ds-slot strong{font-size:1.08rem}.ds-slot em{color:#aebec3;font-size:.82rem;font-style:normal}.ds-slot i{display:grid;width:2.3rem;height:2.3rem;border:1px solid rgba(184,209,214,.24);place-items:center;font-style:normal}.ds-slot:hover{background:rgba(85,213,223,.055);transform:translateX(.65rem)}.ds-slot:focus-visible{outline:3px solid #f3d36b;outline-offset:3px}"
+    },
+    {
+      "name": "Specimen Tray",
+      "kind": "card",
+      "description": "The signature dark steel container for anatomy reference and sequential closures.",
+      "html": "<section class=\"ds-tray\"><span>MUESTRA 206</span><h3>Mesa de liberacion</h3><p>Cinco compartimentos en cadena de custodia.</p></section>",
+      "css": ".ds-tray{position:relative;min-height:14rem;padding:2.75rem 2.75rem 4rem;border:1px solid rgba(183,211,216,.32);color:#eef5f5;background:linear-gradient(115deg,rgba(255,255,255,.035),transparent 24%,rgba(255,255,255,.018) 61%,transparent),#102230;box-shadow:0 18px 45px rgba(0,0,0,.34),inset 0 0 0 8px rgba(5,15,23,.4);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif}.ds-tray span{color:#70838b;font-size:.62rem;font-weight:800;letter-spacing:.12em}.ds-tray h3{margin:1rem 0 .5rem;font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:2rem;text-transform:uppercase}.ds-tray p{color:#aebec3}.ds-tray:focus-within{outline:3px solid #f3d36b;outline-offset:3px}"
+    },
+    {
+      "name": "Challenge Compartment",
+      "kind": "custom",
+      "description": "The cyan-railed paper modal that contains each challenge.",
+      "html": "<section class=\"ds-dialog\"><aside><span>ESTACION</span><strong>01</strong></aside><main><small>SEPARACION DE SISTEMAS</small><h3>Axial o apendicular</h3><p>Clasifica cada muestra.</p></main></section>",
+      "css": ".ds-dialog{display:grid;grid-template-columns:5.5rem 1fr;max-width:42rem;overflow:hidden;border:1px solid #9db1b5;border-radius:3px;color:#15252c;background:#e8e7dd;box-shadow:0 28px 80px rgba(0,0,0,.58);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif}.ds-dialog aside{display:flex;min-height:20rem;flex-direction:column;align-items:center;padding:1.5rem 1rem;color:#061019;background:#55d5df}.ds-dialog aside span{font-size:.58rem;font-weight:800;letter-spacing:.16em;writing-mode:vertical-rl}.ds-dialog aside strong{margin-top:1rem;font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:3.8rem}.ds-dialog main{padding:2rem}.ds-dialog small{color:#35646b;font-weight:700;letter-spacing:.16em}.ds-dialog h3{margin:.8rem 0 2rem;font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:3rem;line-height:.9;text-transform:uppercase}.ds-dialog p{padding-top:1rem;border-top:1px solid rgba(37,67,75,.22)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "La bandeja de instrumental anatomico",
+    "overview": "The interface feels like a controlled university specimen station: deep navy steel surrounds an ivory paper work surface, measurement lines and serial labels organize evidence, and cyan/coral examination marks distinguish systems. It is clinical and mechanical without becoming cold, graphic without becoming a generic neon laboratory, and game-like without sacrificing academic credibility. Density is purposeful. The mission table keeps the skeleton, five sequential closures, status readouts, and chain-of-custody details visible as one instrument. Challenge dialogs invert the environment into a bright paper compartment so sustained form work is legible. The final report returns to the dark room and uses an oversized release stamp as the earned visual payoff.",
+    "keyCharacteristics": [
+      "Dark steel room, ivory paper compartments, and fine measurement lines.",
+      "Condensed uppercase display type paired with a highly legible humanist body face.",
+      "Cyan for active examination, coral for anatomical contrast, green only for verified release.",
+      "Square, bordered, mechanically aligned controls with almost no decorative rounding.",
+      "Sequential opening of compartments as the signature interaction."
+    ],
+    "rules": [
+      { "name": "The Three-Signal Rule", "body": "Cyan means inspect or proceed, coral means anatomical comparison, and green means verified completion; do not exchange these roles.", "section": "colors" },
+      { "name": "The Material Pair Rule", "body": "Long-form interaction happens on paper; navigation and mission context stay on navy steel.", "section": "colors" },
+      { "name": "The Two-Voice Rule", "body": "Use condensed type for identity, commands, station numbers, and outcomes; use Atkinson for every sentence a student must understand or enter.", "section": "typography" },
+      { "name": "The Continuous Instrument Rule", "body": "Related rows share one ruled container; do not break the tray, metrics, or challenge options into floating rounded cards.", "section": "layout" },
+      { "name": "The Structural Shadow Rule", "body": "Shadows communicate a physical layer or an active control; ordinary rows and containers use rules and tonal changes instead.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do preserve the instrument-tray hierarchy: navy context, paper work surface, ruled compartments, and exact signal-color roles.",
+      "Do retain CECAR logo proportions and use the existing white institutional raster on dark surfaces.",
+      "Do keep educational copy in Atkinson and condensed uppercase type for protocol identity and outcomes.",
+      "Do preserve native keyboard behavior, the yellow focus ring, live feedback, reduced motion, and the 320px minimum layout.",
+      "Do keep generated raster provenance adjacent to the asset in a same-name .json file."
+    ],
+    "donts": [
+      "Don't turn the interface into a neon sci-fi dashboard, a soft rounded SaaS UI, or a collection of floating cards.",
+      "Don't use coral for primary actions or green before verified completion.",
+      "Don't place dense challenge forms directly on the dark room surface; they belong in paper compartments.",
+      "Don't invent new anatomical imagery, modify institutional marks, or claim source/license details that are absent from asset provenance.",
+      "Don't remove text labels in favor of color-only, icon-only, or motion-only status."
+    ]
+  }
+}

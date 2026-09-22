@@ -1,0 +1,7 @@
+# Mision: liberar el esqueleto
+
+Recurso Educativo Digital Interactivo de CECAR para estudiantes de pregrado de Anatomia Funcional.
+
+El recurso contiene cinco retos sobre clasificacion, ubicacion y funcion de los huesos del esqueleto axial y apendicular. Las respuestas abiertas se reservan para revision docente.
+
+- [Abrir el recurso](./)
