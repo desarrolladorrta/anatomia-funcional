@@ -1211,12 +1211,146 @@ async function sendResults() {
 
 function downloadReport() {
   const report = createReport();
-  const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+  const text = formatReportAsText(report);
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `mision-esqueleto-${normalize(state.profile.name).replaceAll(" ", "-")}.json`;
+  link.download = `mision-esqueleto-${normalize(state.profile.name).replaceAll(" ", "-")}.txt`;
   link.click();
   URL.revokeObjectURL(link.href);
+}
+
+function formatReportAsText(report) {
+  const pad = (value, length = 2) => String(value).padStart(length, "0");
+  const formatDate = (iso) => {
+    if (!iso) return "(sin registro)";
+    const date = new Date(iso);
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
+  const line = "=".repeat(72);
+  const subline = "-".repeat(72);
+  const out = [];
+  out.push(line);
+  out.push("  REPORTE DE MISIÓN: LIBERAR EL ESQUELETO");
+  out.push("  Anatomía Funcional - REDI CECAR");
+  out.push(line);
+  out.push("");
+  out.push("DATOS DEL ESTUDIANTE");
+  out.push(subline);
+  out.push(`  Nombre:            ${report.student || "(sin nombre)"}`);
+  out.push(`  Grupo:             ${report.group || "(sin grupo)"}`);
+  out.push(`  Sesión:            ${report.submissionId || "-"}`);
+  out.push(`  Inicio:            ${formatDate(report.startedAt)}`);
+  out.push(`  Finalización:      ${formatDate(report.finishedAt)}`);
+  out.push(`  Tiempo invertido:  ${report.elapsedMinutes} min`);
+  out.push("");
+  out.push("RESULTADO GLOBAL");
+  out.push(subline);
+  out.push(`  Puntuación:        ${report.score} / 1000`);
+  out.push(`  Intentos:          ${report.attempts}`);
+  out.push(`  Pistas usadas:     ${report.hints}`);
+  out.push(`  Estaciones:        ${report.completedChallenges} de 5`);
+  out.push("");
+
+  challengeMeta.forEach((meta, index) => {
+    const answers = report.answers?.[index];
+    out.push(`ESTACIÓN ${index + 1}: ${meta.title.toUpperCase()}`);
+    out.push(subline);
+    if (!answers) {
+      out.push("  (no completada)");
+      out.push("");
+      return;
+    }
+    out.push(...summarizeChallenge(index, answers));
+    out.push("");
+  });
+
+  out.push(line);
+  out.push("  Bloque técnico (formato JSON para Google Sheets)");
+  out.push(line);
+  out.push(JSON.stringify(report, null, 2));
+  out.push("");
+  return out.join("\n");
+}
+
+function summarizeChallenge(index, answers) {
+  const lines = [];
+  switch (index) {
+    case 0: {
+      const selections = answers.selections || {};
+      let correct = 0;
+      classificationItems.forEach(([number, , answer]) => {
+        if (selections[number] === answer) correct += 1;
+      });
+      lines.push(`  Huesos clasificados: ${correct} de ${classificationItems.length} correctos`);
+      if (answers.reason) {
+        lines.push(`  Justificación:`);
+        lines.push(`    ${answers.reason.replace(/\n/g, "\n    ")}`);
+      }
+      break;
+    }
+    case 1: {
+      const matches = answers.matches || {};
+      let correct = 0;
+      regions.forEach(([, answer], i) => {
+        if (matches[i] === answer) correct += 1;
+      });
+      lines.push(`  Regiones bien relacionadas: ${correct} de ${regions.length}`);
+      break;
+    }
+    case 2: {
+      const cases = answers.cases || {};
+      const caseNames = Object.keys(cases);
+      lines.push(`  Casos respondedos:  ${caseNames.length} de 4`);
+      Object.entries(cases).forEach(([caseId, selected]) => {
+        if (Array.isArray(selected) && selected.length) {
+          lines.push(`    - ${caseId}: ${selected.join(", ")}`);
+        }
+      });
+      if (answers.reason) {
+        lines.push(`  Mini-desafío:`);
+        lines.push(`    ${answers.reason.replace(/\n/g, "\n    ")}`);
+      }
+      break;
+    }
+    case 3: {
+      const given = answers.mysteries || [];
+      const total = mysteries.length;
+      const correct = given.reduce((acc, item, i) => {
+        const expected = mysteries[i];
+        if (!expected) return acc;
+        const boneMatch = item.bone && expected.answer.includes(item.bone);
+        const systemMatch = item.system === expected.system;
+        return acc + (boneMatch && systemMatch ? 1 : 0);
+      }, 0);
+      lines.push(`  Huesos identificados: ${correct} de ${total} correctos`);
+      given.forEach((item, i) => {
+        const bone = item.bone || "(sin respuesta)";
+        const system = item.system ? ` (${item.system})` : "";
+        lines.push(`    ${i + 1}. ${bone}${system}`);
+      });
+      break;
+    }
+    case 4: {
+      lines.push(`  Huesos axiales:           ${answers.axial || "-"}`);
+      lines.push(`  Huesos apendiculares:     ${answers.appendicular || "-"}`);
+      lines.push(`  Estructura conectora:     ${answers.connector || "-"}`);
+      lines.push(`  Hueso de carga:           ${answers.load || "-"}`);
+      if (answers.reason) {
+        lines.push(`  Justificación:`);
+        lines.push(`    ${answers.reason.replace(/\n/g, "\n    ")}`);
+      }
+      if (answers.phrase) {
+        lines.push(`  Frase de salida:`);
+        lines.push(`    ${answers.phrase.replace(/\n/g, "\n    ")}`);
+      }
+      break;
+    }
+    default:
+      lines.push(`  ${JSON.stringify(answers)}`);
+  }
+  return lines;
 }
 
 render();
