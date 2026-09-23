@@ -76,6 +76,7 @@ function icon(name) {
     close: '<path d="m6 6 12 12M18 6 6 18"/>',
     arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
     reset: '<path d="M4 12a8 8 0 1 0 3-6.2L4 9"/><path d="M4 4v5h5"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
   };
   return `<svg aria-hidden="true" viewBox="0 0 24 24">${paths[name]}</svg>`;
 }
@@ -97,6 +98,18 @@ function renderIntro() {
         <p class="mission-code">PROTOCOLO AF-87 / ACCESO RESTRINGIDO</p>
         <h1 id="mission-title">Libera el<br />esqueleto.</h1>
         <p class="intro-lead">El laboratorio de Anatom&iacute;a Funcional ha quedado bloqueado. Supera cinco pruebas sobre el esqueleto axial y apendicular para activar la salida.</p>
+        <section class="participation-guide" aria-labelledby="participation-title">
+          <div class="participation-guide__heading">
+            <h2 id="participation-title">&iquest;C&oacute;mo participar?</h2>
+            <p>Pon a prueba tus conocimientos y supera los diferentes desaf&iacute;os de la misi&oacute;n.</p>
+          </div>
+          <ol>
+            <li><span>01</span><p><strong>Lee</strong> con atenci&oacute;n cada reto.</p></li>
+            <li><span>02</span><p><strong>Analiza</strong> la informaci&oacute;n presentada.</p></li>
+            <li><span>03</span><p><strong>Responde</strong> y registra tus resultados.</p></li>
+            <li><span>04</span><p><strong>Avanza</strong> hasta completar la misi&oacute;n.</p></li>
+          </ol>
+        </section>
         <dl class="mission-facts">
           <div><dt>Duraci&oacute;n</dt><dd>45-60 min</dd></div>
           <div><dt>Modalidad</dt><dd>Individual</dd></div>
@@ -108,7 +121,7 @@ function renderIntro() {
         <div class="panel-index"><span>ACCESO</span><strong>01</strong></div>
         <div>
           <h2 id="access-title">Identifica tu muestra</h2>
-          <p>Estos datos acompa&ntilde;ar&aacute;n el reporte que recibe el docente.</p>
+          <p>Antes de comenzar, registra tus datos acad&eacute;micos. Estos acompa&ntilde;ar&aacute;n el reporte que recibe el docente.</p>
         </div>
         <form id="profile-form" class="intake-form">
           <label>
@@ -116,14 +129,19 @@ function renderIntro() {
             <input name="name" autocomplete="name" maxlength="80" required placeholder="Escribe tu nombre" />
           </label>
           <label>
-            Grupo o curso <span>(opcional)</span>
-            <input name="group" maxlength="40" placeholder="Ej. Anatom&iacute;a 2A" />
+            Grupo o curso
+            <input name="group" maxlength="40" required placeholder="Ej. Grupo 2A" />
+          </label>
+          <label>
+            Asignatura
+            <input name="subject" maxlength="80" required placeholder="Ej. Anatom&iacute;a Funcional" />
           </label>
           <label class="consent-row">
             <input type="checkbox" name="consent" />
             <span>Autorizo el env&iacute;o de mi resultado al docente al finalizar <b>(opcional)</b>.</span>
           </label>
           <button class="primary-action" type="submit">Iniciar misi&oacute;n ${icon("arrow")}</button>
+          <button class="scoring-link" type="button" data-open-scoring>${icon("info")} &iquest;C&oacute;mo funcionan los puntos y las pistas?</button>
         </form>
         <p class="privacy-note">El progreso se guarda en este dispositivo. No solicitamos documento ni correo.</p>
       </section>
@@ -137,6 +155,7 @@ function renderIntro() {
       profile: {
         name: data.get("name").trim(),
         group: data.get("group").trim(),
+        subject: data.get("subject").trim(),
         shareConsent: data.get("consent") === "on",
       },
       sessionId: crypto.randomUUID(),
@@ -145,6 +164,7 @@ function renderIntro() {
     persist();
     render();
   });
+  document.querySelector("[data-open-scoring]").addEventListener("click", openScoringDialog);
 }
 
 function renderMission() {
@@ -158,7 +178,7 @@ function renderMission() {
       <img class="brand" src="${asset("logo-cecar.png")}" alt="CECAR" />
       <div class="header-readouts" aria-label="Estado de la misi&oacute;n">
         <div><span>TIEMPO</span><strong id="timer">60:00</strong></div>
-        <div><span>PUNTAJE</span><strong id="score">${state.score}</strong></div>
+        <button class="score-readout" type="button" data-open-scoring aria-label="Puntaje ${state.score}. Ver c&oacute;mo funcionan los puntos y las pistas"><span>PUNTAJE ${icon("info")}</span><strong id="score">${state.score}</strong></button>
         <div><span>PROGRESO</span><strong>${completedCount}/5</strong></div>
       </div>
       <button class="quiet-button" id="reset-button" type="button" title="Reiniciar misi&oacute;n">${icon("reset")}<span>Reiniciar</span></button>
@@ -207,6 +227,7 @@ function renderMission() {
     button.addEventListener("click", () => openChallenge(Number(button.dataset.challenge)));
   });
   document.querySelector("#reset-button").addEventListener("click", openResetDialog);
+  document.querySelector("[data-open-scoring]").addEventListener("click", openScoringDialog);
   document.querySelector("#exit-control")?.addEventListener("click", () => {
     state.finishedAt = new Date().toISOString();
     persist();
@@ -214,6 +235,44 @@ function renderMission() {
   });
   updateTimer();
   timerId = window.setInterval(updateTimer, 1000);
+}
+
+function openScoringDialog() {
+  document.querySelector("#scoring-dialog")?.remove();
+  const dialog = document.createElement("dialog");
+  dialog.id = "scoring-dialog";
+  dialog.className = "scoring-dialog";
+  dialog.setAttribute("aria-labelledby", "scoring-title");
+  dialog.setAttribute("aria-describedby", "scoring-description");
+  dialog.innerHTML = `
+    <div class="scoring-dialog__marker">${icon("info")}<span>REGLAS</span></div>
+    <div class="scoring-dialog__content">
+      <button class="icon-button scoring-dialog__close" type="button" data-scoring-close aria-label="Cerrar explicaci&oacute;n">${icon("close")}</button>
+      <p>MARCADOR DE MISI&Oacute;N</p>
+      <h2 id="scoring-title">Puntos y pistas</h2>
+      <p id="scoring-description">Tu objetivo es completar las cinco estaciones conservando la mayor cantidad de puntos posible.</p>
+      <dl class="scoring-rules">
+        <div><dt><strong>1000</strong><span>Puntos iniciales</span></dt><dd>Comienzas la misi&oacute;n con el puntaje completo.</dd></div>
+        <div><dt><strong>&minus;15</strong><span>Por intento incorrecto</span></dt><dd>Se descuenta al verificar un reto con respuestas incorrectas o incompletas.</dd></div>
+        <div><dt><strong>&minus;20</strong><span>Por cada pista</span></dt><dd>Puedes solicitar una pista en cada estaci&oacute;n. Te orienta, pero no revela la respuesta.</dd></div>
+      </dl>
+      <div class="scoring-note"><span>${icon("clock")}</span><p><strong>El tiempo no descuenta puntos.</strong> Se registra para el reporte final y la actividad dura aproximadamente 45 a 60 minutos.</p></div>
+      <p class="scoring-floor">El puntaje nunca baja de 0. Los intentos, las pistas y el resultado final quedan registrados para revisi&oacute;n docente.</p>
+      <button class="primary-action" type="button" data-scoring-close>Entendido ${icon("check")}</button>
+    </div>`;
+  document.body.append(dialog);
+
+  const close = () => {
+    dialog.close();
+    dialog.remove();
+  };
+  dialog.querySelectorAll("[data-scoring-close]").forEach((button) => button.addEventListener("click", close));
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    close();
+  });
+  dialog.showModal();
+  dialog.querySelector("[data-scoring-close]").focus();
 }
 
 function challengeButton(challenge, index) {
@@ -1118,6 +1177,7 @@ function createReport() {
     activity: "Mision: liberar el esqueleto",
     student: state.profile.name,
     group: state.profile.group,
+    subject: state.profile.subject,
     startedAt: state.startedAt,
     finishedAt: state.finishedAt,
     elapsedMinutes: getElapsedMinutes(),
@@ -1240,6 +1300,7 @@ function formatReportAsText(report) {
   out.push(subline);
   out.push(`  Nombre:            ${report.student || "(sin nombre)"}`);
   out.push(`  Grupo:             ${report.group || "(sin grupo)"}`);
+  out.push(`  Asignatura:        ${report.subject || "(sin asignatura)"}`);
   out.push(`  Sesión:            ${report.submissionId || "-"}`);
   out.push(`  Inicio:            ${formatDate(report.startedAt)}`);
   out.push(`  Finalización:      ${formatDate(report.finishedAt)}`);
