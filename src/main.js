@@ -22,6 +22,8 @@ const emptyState = () => ({
   attempts: 0,
   hints: 0,
   hintUsed: [],
+  interruptions: 0,
+  inactiveSeconds: 0,
   startedAt: null,
   finishedAt: null,
   answers: {},
@@ -30,6 +32,13 @@ const emptyState = () => ({
 
 let state = loadState();
 let timerId;
+let sessionHiddenAt = null;
+
+console.info(
+  "%cActividad acad\u00e9mica protegida%c\nEl progreso, los intentos, las pistas y las interrupciones de sesi\u00f3n quedan registrados en el reporte. Modificar la aplicaci\u00f3n desde la consola invalida la evidencia de la actividad.",
+  "color:#55d5df;background:#061019;padding:6px 10px;font-weight:700;font-size:14px;",
+  "color:inherit;font-size:12px;",
+);
 
 function loadState() {
   try {
@@ -143,7 +152,7 @@ function renderIntro() {
           <button class="primary-action" type="submit">Iniciar misi&oacute;n ${icon("arrow")}</button>
           <button class="scoring-link" type="button" data-open-scoring>${icon("info")} &iquest;C&oacute;mo funcionan los puntos y las pistas?</button>
         </form>
-        <p class="privacy-note">El progreso se guarda en este dispositivo. No solicitamos documento ni correo.</p>
+        <p class="privacy-note">El progreso se guarda en este dispositivo. Durante la misi&oacute;n se registran los cambios de pesta&ntilde;a como interrupciones de sesi&oacute;n. No solicitamos documento ni correo.</p>
       </section>
     </main>`;
 
@@ -235,6 +244,69 @@ function renderMission() {
   });
   updateTimer();
   timerId = window.setInterval(updateTimer, 1000);
+}
+
+function hasActiveMission() {
+  return Boolean(state.profile && !state.finishedAt);
+}
+
+function handleVisibilityChange() {
+  if (!hasActiveMission()) {
+    sessionHiddenAt = null;
+    return;
+  }
+
+  if (document.visibilityState === "hidden") {
+    if (sessionHiddenAt) return;
+    sessionHiddenAt = Date.now();
+    state.interruptions += 1;
+    persist();
+    return;
+  }
+
+  if (!sessionHiddenAt) return;
+  const inactiveSeconds = Math.max(1, Math.round((Date.now() - sessionHiddenAt) / 1000));
+  sessionHiddenAt = null;
+  state.inactiveSeconds += inactiveSeconds;
+  persist();
+  showIntegrityDialog(inactiveSeconds);
+}
+
+function handleBeforeUnload(event) {
+  if (!hasActiveMission()) return;
+  event.preventDefault();
+  event.returnValue = "";
+}
+
+function showIntegrityDialog(inactiveSeconds) {
+  document.querySelector("#integrity-dialog")?.remove();
+  const dialog = document.createElement("dialog");
+  dialog.id = "integrity-dialog";
+  dialog.className = "integrity-dialog";
+  dialog.setAttribute("aria-labelledby", "integrity-title");
+  dialog.setAttribute("aria-describedby", "integrity-description");
+  dialog.innerHTML = `
+    <div class="integrity-dialog__marker">${icon("info")}<span>SESI&Oacute;N</span></div>
+    <div class="integrity-dialog__content">
+      <p>CONTROL DE ACTIVIDAD</p>
+      <h2 id="integrity-title">Interrupci&oacute;n registrada</h2>
+      <p id="integrity-description">La misi&oacute;n estuvo fuera de pantalla durante <strong>${inactiveSeconds} ${inactiveSeconds === 1 ? "segundo" : "segundos"}</strong>.</p>
+      <div class="integrity-dialog__detail"><span>${icon("clock")}</span><p>El cambio de pesta&ntilde;a y su duraci&oacute;n aproximada se incluir&aacute;n en el reporte para brindar contexto al docente.</p></div>
+      <button class="primary-action" type="button" data-integrity-close>Continuar misi&oacute;n ${icon("arrow")}</button>
+    </div>`;
+  document.body.append(dialog);
+
+  const close = () => {
+    dialog.close();
+    dialog.remove();
+  };
+  dialog.querySelector("[data-integrity-close]").addEventListener("click", close);
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    close();
+  });
+  dialog.showModal();
+  dialog.querySelector("[data-integrity-close]").focus();
 }
 
 function openScoringDialog() {
@@ -1172,7 +1244,7 @@ function getElapsedMinutes() {
 
 function createReport() {
   return {
-    version: 1,
+    version: 2,
     submissionId: state.sessionId,
     activity: "Mision: liberar el esqueleto",
     student: state.profile.name,
@@ -1184,6 +1256,10 @@ function createReport() {
     score: state.score,
     attempts: state.attempts,
     hints: state.hints,
+    integrity: {
+      interruptions: state.interruptions,
+      inactiveSeconds: state.inactiveSeconds,
+    },
     completedChallenges: state.completed.length,
     answers: state.answers,
   };
@@ -1311,6 +1387,8 @@ function formatReportAsText(report) {
   out.push(`  Puntuación:        ${report.score} / 1000`);
   out.push(`  Intentos:          ${report.attempts}`);
   out.push(`  Pistas usadas:     ${report.hints}`);
+  out.push(`  Interrupciones:    ${report.integrity?.interruptions || 0}`);
+  out.push(`  Tiempo fuera:      ${formatDuration(report.integrity?.inactiveSeconds || 0)}`);
   out.push(`  Estaciones:        ${report.completedChallenges} de 5`);
   out.push("");
 
@@ -1333,6 +1411,13 @@ function formatReportAsText(report) {
   out.push(JSON.stringify(report, null, 2));
   out.push("");
   return out.join("\n");
+}
+
+function formatDuration(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (!minutes) return `${seconds} s`;
+  return `${minutes} min ${seconds} s`;
 }
 
 function summarizeChallenge(index, answers) {
@@ -1414,4 +1499,6 @@ function summarizeChallenge(index, answers) {
   return lines;
 }
 
+document.addEventListener("visibilitychange", handleVisibilityChange);
+window.addEventListener("beforeunload", handleBeforeUnload);
 render();

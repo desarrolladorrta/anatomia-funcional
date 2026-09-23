@@ -2307,6 +2307,59 @@ textarea::placeholder {
 
 .toast.is-visible { opacity: 1; transform: translateY(0); }
 
+.integrity-dialog {
+  width: min(36rem, calc(100% - 2rem));
+  padding: 0;
+  border: 1px solid #9db1b5;
+  border-radius: 3px;
+  color: var(--paper-ink);
+  background: var(--paper);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.58);
+}
+
+.integrity-dialog[open] {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  animation: compartment-open 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.integrity-dialog::backdrop {
+  background: rgba(2, 9, 14, 0.82);
+  backdrop-filter: blur(5px);
+}
+
+.integrity-dialog__marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 0.8rem;
+  color: var(--navy-950);
+  background: var(--cyan);
+}
+
+.integrity-dialog__marker svg { width: 1.7rem; height: 1.7rem; }
+.integrity-dialog__marker span { font-size: 0.58rem; font-weight: 800; letter-spacing: 0.16em; writing-mode: vertical-rl; }
+
+.integrity-dialog__content { padding: clamp(1.5rem, 5vw, 3rem); }
+.integrity-dialog__content > p:first-child { margin: 0 0 0.7rem; color: #35646b; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.15em; }
+.integrity-dialog__content h2 { max-width: 10ch; margin: 0; font-family: var(--display); font-size: clamp(2.5rem, 7vw, 4rem); letter-spacing: -0.025em; line-height: 0.92; text-transform: uppercase; }
+#integrity-description { margin: 1.2rem 0 0; color: #52666b; line-height: 1.5; }
+
+.integrity-dialog__detail {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.8rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  color: #dcebed;
+  background: var(--navy-850);
+}
+
+.integrity-dialog__detail span { color: var(--cyan); font-size: 1.25rem; }
+.integrity-dialog__detail p { margin: 0; font-size: 0.88rem; line-height: 1.45; }
+.integrity-dialog__content > .primary-action { width: 100%; }
+
 .report-page {
   background:
     linear-gradient(90deg, transparent 49.8%, rgba(159, 190, 196, 0.1) 50%, transparent 50.2%),
@@ -2543,6 +2596,11 @@ textarea::placeholder {
   .scoring-dialog__content h2 { padding-right: 2.5rem; font-size: 2.5rem; }
   .scoring-dialog__close { top: 1rem; right: 1rem; }
   .scoring-rules > div { grid-template-columns: 1fr; gap: 0.35rem; }
+
+  .integrity-dialog[open] { grid-template-columns: 2.75rem minmax(0, 1fr); }
+  .integrity-dialog__marker { padding-inline: 0.45rem; }
+  .integrity-dialog__content { padding: 1.5rem 1rem; }
+  .integrity-dialog__content h2 { font-size: 2.5rem; }
 
   .release-panel { grid-template-columns: 1fr; padding-top: 3.5rem; }
   .release-stamp { width: 11rem; }
